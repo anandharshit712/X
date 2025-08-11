@@ -1,6 +1,6 @@
 // routes/analytics.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../auth"); // your existing JWT middleware
+const { authenticateToken } = require("../middleware/auth"); // your existing JWT middleware
 const { validateQuery } = require("../middleware/validateRequest");
 const { asyncHandler } = require("../middleware/asyncHandler");
 

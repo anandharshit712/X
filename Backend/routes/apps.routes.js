@@ -1,6 +1,6 @@
 // routes/apps.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../auth"); // your JWT middleware
+const { authenticateToken } = require("../middleware/auth"); // your JWT middleware
 const {
   validateQuery,
   validateParams,

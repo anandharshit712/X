@@ -1,6 +1,6 @@
 // routes/invoices.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../auth");
+const { authenticateToken } = require("../middleware/auth");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const uploadPdf = require("../middleware/uploadPdf");
 

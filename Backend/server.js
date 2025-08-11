@@ -67,6 +67,10 @@ app.use("/api/wallet", walletRoutes);
 const settingsRoutes = require("./routes/settings.routes");
 app.use("/api/settings", settingsRoutes);
 
+// CAMPAIGNS
+const campaignsRoutes = require("./routes/campaigns.routes");
+app.use("/api/campaigns", campaignsRoutes);
+
 // ---------- ERROR HANDLER ----------
 const { errorHandler } = require("./middleware/errorHandler");
 app.use(errorHandler);
