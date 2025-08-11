@@ -40,7 +40,7 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
-      const response = await axios.post("/api/auth/login", { email, password });
+      const response = await axios.post("http://localhost:3000/api/auth/login", { email, password });
       const { data } = response.data;
       // Save token and session info
       localStorage.setItem("token", data.token);
@@ -52,7 +52,7 @@ const Login = () => {
         (Date.now() + 24 * 60 * 60 * 1000).toString()
       );
       setIsLoading(false);
-      navigate("/dashboard"); // Change to your dashboard route
+      navigate("/sidebar"); // Change to your dashboard route
     } catch (err) {
       setIsLoading(false);
       if (err.response && err.response.data && err.response.data.message) {

@@ -1,81 +1,77 @@
+// server.js
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const path = require("path");
-const envPath = path.join(__dirname, ".env");
-require("dotenv").config({ path: envPath });
-
-const authRoutes = require("./routes/auth");
-
-const { testAllConnections, initializeDatabase } = require("./config/database");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// ensure pools are initialized (uses your existing config/database.js)
+require("./config/database");
+
+// core middleware
 app.use(helmet());
-app.use(cors());
-app.use(morgan("combined"));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : true,
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Static files for uploaded images
-app.use("/uploads", express.static("uploads"));
+// health check
+app.get("/api/health", (_req, res) =>
+  res.json({ ok: true, status: "healthy" })
+);
 
-// Routes
+// ---------- ROUTES ----------
+
+// AUTH (keep your existing auth.js as-is)
+const authRoutes = require("./routes/auth.routes"); // your working auth route file
 app.use("/api/auth", authRoutes);
 
-// Health check endpoint
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "OK",
-    message: "EngageX User Backend is running",
-    timestamp: new Date().toISOString(),
-  });
+// DASHBOARD (new structured route)
+const dashboardRoutes = require("./routes/dashboard.routes");
+app.use("/api/dashboard", dashboardRoutes);
+
+// ANALYTICS
+const analyticsRoutes = require("./routes/analytics.routes");
+app.use("/api/analytics", analyticsRoutes);
+
+// APPS
+const appsRoutes = require("./routes/apps.routes");
+app.use("/api/apps", appsRoutes);
+
+// PAYMENTS
+const paymentsRoutes = require("./routes/payments.routes");
+app.use("/api/payments", paymentsRoutes);
+
+// INVOICES (PDF upload/download)
+const invoicesRoutes = require("./routes/invoices.routes");
+app.use("/api/invoices", invoicesRoutes);
+
+// BILLING (user-side)
+const billingRoutes = require("./routes/billing.routes");
+app.use("/api/user", billingRoutes);
+
+// WALLET
+const walletRoutes = require("./routes/wallet.routes");
+app.use("/api/wallet", walletRoutes);
+
+// SETTINGS (Account only; no team features for user side)
+const settingsRoutes = require("./routes/settings.routes");
+app.use("/api/settings", settingsRoutes);
+
+// ---------- ERROR HANDLER ----------
+const { errorHandler } = require("./middleware/errorHandler");
+app.use(errorHandler);
+
+// start server
+app.listen(PORT, () => {
+  console.log(`API listening on http://localhost:${PORT}`);
 });
-
-// 404 handler
-app.use("*", (req, res) => {
-  res.status(404).json({
-    error: "Route not found",
-    message: "The requested endpoint does not exist",
-  });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(err.status || 500).json({
-    error: err.message || "Internal server error",
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-  });
-});
-
-// Initialize database and start server
-const startServer = async () => {
-  try {
-    // Test all database connections
-    await testAllConnections();
-
-    // Initialize database tables
-    await initializeDatabase();
-
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`🚀 EngageX User Backend running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`🔗 API Documentation: http://localhost:${PORT}/api/health`);
-      console.log(
-        `🗄️  Available databases: dashboard, offerwall, emailing, engagex`
-      );
-    });
-  } catch (error) {
-    console.error("❌ Failed to start server:", error.message);
-    process.exit(1);
-  }
-};
-
-startServer();
-
-module.exports = app;

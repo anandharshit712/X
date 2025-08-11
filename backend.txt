@@ -1,0 +1,73 @@
+backend/
+│
+├── server.js						done
+├── package.json
+├── .env							done
+│
+├── config/                        # Config files
+│   ├── database.js				done
+│   └── jwt.js						done
+│
+├── middleware/                    # Reusable middleware
+│   ├── auth.js                     
+│   ├── errorHandler.js			done
+│   ├── validateRequest.js			done
+│   ├── uploadPdf.js				done
+│
+├── routes/                         # Route definitions
+│   ├── auth.routes.js              done
+│   ├── dashboard.routes.js         done
+│   ├── analytics.routes.js         done
+│   ├── apps.routes.js              done
+│   ├── payments.routes.js          done
+│   ├── invoices.routes.js          done
+│   ├── billing.routes.js           done
+│   ├── wallet.routes.js            done
+│   ├── setting.routes.js           done
+│
+├── controllers/                    # Request handlers (1 per route file)
+│   ├── auth.controller.js			
+│   ├── dashboard.controller.js	done
+│   ├── analytics.controller.js	done
+│   ├── apps.controller.js			done
+│   ├── payments.controller.js		done
+│   ├── invoices.controller.js		done
+│   ├── billing.controller.js		done
+│   ├── wallet.controller.js		done
+│   ├── settings.controller.js		done
+│
+├── services/                       # Business logic (1 per feature)
+│   ├── auth.service.js			
+│   ├── dashboard.service.js		done
+│   ├── analytics.service.js		done
+│   ├── apps.service.js			done
+│   ├── payments.service.js		done
+│   ├── invoices.service.js		done
+│   ├── billing.service.js			done
+│   ├── wallet.service.js			done
+│   ├── settings.service.js		done
+│
+├── repositories/                   # DB queries only
+│   ├── auth.repo.js				
+│   ├── dashboard.repo.js			done
+│   ├── analytics.repo.js			done
+│   ├── apps.repo.js				done
+│   ├── payments.repo.js			done
+│   ├── invoices.repo.js			done
+│   ├── billing.repo.js			done
+│   ├── wallet.repo.js				done
+│   ├── settings.repo.js			done
+│
+/*├── validations/                    # Zod/Joi schemas for request validation
+│   ├── auth.validation.js
+│   ├── analytics.validation.js
+│   ├── apps.validation.js
+│   ├── payments.validation.js
+│   ├── invoices.validation.js				NOT DOING THIS VALIDATION PART
+│   ├── billing.validation.js
+│   ├── wallet.validation.js
+│*/
+├── utils/                          # Helper functions
+│   ├── commission.js				done
+│
+└── uploads/                        # For invoice PDFs (if storing locally for now)

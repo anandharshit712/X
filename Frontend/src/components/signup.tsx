@@ -54,7 +54,10 @@ function Signup() {
         pincode: formData.pincode,
         country: formData.country,
       };
-      const response = await axios.post("/api/auth/register", payload);
+      const response = await axios.post(
+        "http://localhost:3000/api/auth/register",
+        payload
+      );
       setIsLoading(false);
       // Optionally, redirect or show success message
       // For now, just clear the form
