@@ -11,12 +11,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/*" element={<Sidebars />}>
-          <Route path="monetization/*" element={<Sidebars />} />
-          <Route path="acquisition/*" element={<Sidebars />} />
-          <Route path="billing" element={<Sidebars />} />
-          <Route path="settings" element={<Sidebars />} />
-        </Route>
+        <Route path="/*" element={<Sidebars />} />
       </Routes>
     </Router>
   );

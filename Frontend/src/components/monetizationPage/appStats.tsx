@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { getApps, searchApps, addApp } from '../../services/apps';
+import { createCampaign } from '../../services/campaigns';
 import { Search, Upload, Plus, X } from 'lucide-react';
 
-// --- MOCK DATA AND TYPES ---
+// --- DATA AND TYPES ---
 
 // Defines the structure for an application object
 interface AppData {
-  id: string;
-  name: string;
+  app_id: string;
+  name: string; // This will be populated from app_package for now
   logo: string;
-  dateAdded: string;
+  created_at: string;
 }
 
 // Defines the structure for a campaign object
@@ -17,30 +19,6 @@ interface Campaign {
   campaignName: string;
   budget: string;
 }
-
-// Initial mock data for apps already added by the user
-const initialApps: AppData[] = [
-  {
-    id: '31892242',
-    name: 'Instagram',
-    logo: 'https://placehold.co/100x100/E1306C/white?text=IG',
-    dateAdded: '20.05.2025',
-  },
-  {
-    id: '31892243',
-    name: 'WhatsApp',
-    logo: 'https://placehold.co/100x100/25D366/white?text=WA',
-    dateAdded: '20.05.2025',
-  },
-];
-
-// Mock data for search results
-const appSearchResults: AppData[] = [
-    { id: '1', name: 'TikTok', logo: 'https://placehold.co/100x100/000000/white?text=TT', dateAdded: '' },
-    { id: '2', name: 'Twitter (X)', logo: 'https://placehold.co/100x100/1DA1F2/white?text=X', dateAdded: '' },
-    { id: '3', name: 'Snapchat', logo: 'https://placehold.co/100x100/FFFC00/black?text=SC', dateAdded: '' },
-];
-
 
 // --- HELPER COMPONENTS ---
 
@@ -61,8 +39,10 @@ const LoggedInNavbar = ({ title }: { title: string }) => (
 
 const ManageAppsPage = () => {
   // State for managing the list of apps and campaigns
-  const [apps, setApps] = useState<AppData[]>(initialApps);
+  const [apps, setApps] = useState<AppData[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // State for controlling modals
   const [isAddAppModalOpen, setAddAppModalOpen] = useState(false);
@@ -71,7 +51,7 @@ const ManageAppsPage = () => {
 
   // State for the "Add App" search functionality
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredApps, setFilteredApps] = useState<AppData[]>(appSearchResults);
+  const [filteredApps, setFilteredApps] = useState<AppData[]>([]);
 
   // State for the "Add Manually" form
   const [manualAppName, setManualAppName] = useState('');
@@ -84,17 +64,59 @@ const ManageAppsPage = () => {
   const [campaignName, setCampaignName] = useState('');
   const [campaignBudget, setCampaignBudget] = useState('');
 
+  const fetchApps = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getApps();
+      const formattedApps = response.items.map((app: any) => ({
+        ...app,
+        id: app.app_id,
+        name: app.app_package, // Using package name as name for now
+        logo: `https://placehold.co/100x100/7F00FF/white?text=${app.app_package.substring(0,2).toUpperCase()}`,
+        dateAdded: new Date(app.created_at).toLocaleDateString('en-GB'),
+      }));
+      setApps(formattedApps);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to fetch apps.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Effect to fetch apps
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
   // Effect to filter search results based on query
   useEffect(() => {
-    if (searchQuery) {
-      setFilteredApps(
-        appSearchResults.filter((app) =>
-          app.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      );
-    } else {
-      setFilteredApps(appSearchResults);
-    }
+    const search = async () => {
+      if (searchQuery) {
+        try {
+          const response = await searchApps(searchQuery);
+          const formattedApps = response.items.map((app: any) => ({
+            ...app,
+            id: app.app_id,
+            name: app.app_package, // Using package name as name for now
+            logo: `https://placehold.co/100x100/7F00FF/white?text=${app.app_package.substring(0,2).toUpperCase()}`,
+            dateAdded: new Date(app.created_at).toLocaleDateString('en-GB'),
+          }));
+          setFilteredApps(formattedApps);
+        } catch (err) {
+          console.error("Failed to search apps", err);
+          setFilteredApps([]);
+        }
+      } else {
+        setFilteredApps([]);
+      }
+    };
+
+    const debounceTimeout = setTimeout(() => {
+        search();
+    }, 300); // Debounce search to avoid excessive API calls
+
+    return () => clearTimeout(debounceTimeout);
   }, [searchQuery]);
 
   // Handler for image upload
@@ -130,50 +152,66 @@ const ManageAppsPage = () => {
   };
 
   // Handler to add an app from search results
-  const handleAddApp = (app: AppData) => {
-    setApps((prev) => [...prev, app]);
-    setAddAppModalOpen(false);
-    setSearchQuery('');
+  const handleAddApp = async (app: AppData) => {
+    try {
+      await addApp({ app_id: app.app_id, app_package: app.name });
+      setAddAppModalOpen(false);
+      setSearchQuery('');
+      fetchApps(); // Refetch apps to include the new one
+    } catch (err) {
+      alert("Failed to add app");
+    }
   };
 
   // Handler for submitting the manual add form
-  const handleManualAddSubmit = (e: React.FormEvent) => {
+  const handleManualAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualAppName || !manualAppId || !appIcon) {
         alert("Please fill all fields and upload an icon.");
         return;
     }
-    const newApp: AppData = {
-      id: manualAppId,
-      name: manualAppName,
-      logo: appIcon,
-      dateAdded: new Date().toLocaleDateString('en-GB'),
-    };
-    setApps((prev) => [...prev, newApp]);
-    setManualAddModalOpen(false);
-    // Reset form
-    setManualAppName('');
-    setManualAppId('');
-    setAppIcon(null);
+    try {
+      await addApp({ app_id: manualAppId, app_package: manualAppName, logo: appIcon });
+      setManualAddModalOpen(false);
+      // Reset form
+      setManualAppName('');
+      setManualAppId('');
+      setAppIcon(null);
+      fetchApps(); // Refetch apps to include the new one
+    } catch (err) {
+      alert("Failed to add app manually");
+    }
   };
   
   // Handler for submitting the create campaign form
-  const handleCampaignSubmit = (e: React.FormEvent) => {
+  const handleCampaignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if(selectedApp) {
-        const newCampaign: Campaign = {
-            appId: selectedApp.id,
-            campaignName,
-            budget: campaignBudget,
-        };
-        setCampaigns(prev => [...prev, newCampaign]);
-        setCampaignModalOpen(false);
-        // Reset form
-        setCampaignName('');
-        setCampaignBudget('');
-        setSelectedApp(null);
+        try {
+            await createCampaign({
+                app_id: selectedApp.app_id,
+                name: campaignName,
+                budget: campaignBudget,
+            });
+            setCampaignModalOpen(false);
+            // Reset form
+            setCampaignName('');
+            setCampaignBudget('');
+            setSelectedApp(null);
+            // Here you might want to refetch campaigns or update the UI in some way
+        } catch (err) {
+            alert("Failed to create campaign");
+        }
     }
   };
+
+  if (loading) {
+    return <div className="flex-1 p-8 min-h-screen bg-gray-50">Loading...</div>
+  }
+
+  if (error) {
+    return <div className="flex-1 p-8 min-h-screen bg-gray-50 text-red-500">Error: {error}</div>
+  }
 
   return (
     <div className="flex-1 p-8 min-h-screen bg-gray-50">
@@ -193,7 +231,7 @@ const ManageAppsPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {apps.map((app) => (
           <div
-            key={app.id}
+            key={app.app_id}
             className="p-5 bg-white rounded-2xl shadow-md border border-gray-200 flex flex-col items-start gap-3 transition-transform duration-300 transform hover:scale-105"
           >
             <div className="flex items-center gap-3 w-full mb-2">
@@ -216,13 +254,13 @@ const ManageAppsPage = () => {
               + Create Campaign
             </button>
             <div className="text-sm text-gray-600">
-              <strong>App ID:</strong> {app.id}
+              <strong>App ID:</strong> {app.app_id}
             </div>
             <div className="text-sm text-gray-600">
-              <strong>Date of Creation:</strong> {app.dateAdded}
+              <strong>Date of Creation:</strong> {new Date(app.created_at).toLocaleDateString('en-GB')}
             </div>
             <div className="text-sm text-gray-600">
-              <strong>Campaigns:</strong> {campaigns.filter(c => c.appId === app.id).length}
+              <strong>Campaigns:</strong> {campaigns.filter(c => c.appId === app.app_id).length}
             </div>
           </div>
         ))}
@@ -245,7 +283,7 @@ const ManageAppsPage = () => {
             </div>
             <div className="space-y-3 max-h-60 overflow-y-auto">
                 {filteredApps.map(app => (
-                    <div key={app.id} onClick={() => handleAddApp(app)} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-100 cursor-pointer transition">
+                    <div key={app.app_id} onClick={() => handleAddApp(app)} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-100 cursor-pointer transition">
                         <img src={app.logo} alt={app.name} className="w-10 h-10 rounded-md"/>
                         <span className="font-semibold">{app.name}</span>
                     </div>
@@ -329,56 +367,3 @@ const ManageAppsPage = () => {
 };
 
 export default ManageAppsPage;
-
-/*
-* =================================================================
-* == COMPONENT, STATE, AND INTEGRATION DOCUMENTATION
-* =================================================================
-*
-* === COMPONENT: ManageAppsPage ===
-* - Purpose: This is the main page for users to view their added applications,
-* add new ones (either by searching or manually), and create advertising
-* campaigns for them.
-*
-* === STATE VARIABLES ===
-*
-* - `apps` (Array<AppData>):
-* - Holds the list of application objects that the user has added.
-* - Each object contains: `id`, `name`, `logo`, `dateAdded`.
-* - For backend integration: This state should be initialized by fetching the user's
-* apps from your database. When a new app is added, a POST request should be sent,
-* and this state updated with the response.
-*
-* - `campaigns` (Array<Campaign>):
-* - Stores all campaigns created by the user across all their apps.
-* - Each object contains: `appId`, `campaignName`, `budget`.
-* - For backend integration: When a campaign is created, a POST request with the
-* campaign data should be sent to your server.
-*
-* - `isAddAppModalOpen` (boolean): Controls the visibility of the "Add Your App" search modal.
-* - `isManualAddModalOpen` (boolean): Controls the visibility of the "Add App Manually" form modal.
-* - `isCampaignModalOpen` (boolean): Controls the visibility of the "Create Campaign" form modal.
-*
-* - `searchQuery` (string): Stores the text entered into the app search input field.
-* - For backend integration: This query can be sent to an API endpoint that searches
-* the Google Play Store or your internal app database.
-*
-* - `manualAppName`, `manualAppId` (string): State for the controlled inputs in the manual add form.
-* - `appIcon` (string | null): Stores the base64 representation of the uploaded app icon.
-* - For backend integration: This base64 string should be sent to the server to be stored,
-* likely in a cloud storage bucket (like S3 or Firebase Storage), with the URL
-* then saved in your database.
-*
-* - `fileError` (string): Holds validation error messages for the file upload.
-*
-* - `selectedApp` (AppData | null): Stores the app object for which a campaign is being created.
-* - `campaignName`, `campaignBudget` (string): State for the controlled inputs in the campaign creation form.
-*
-* === BACKEND INTEGRATION NOTES ===
-*
-* 1.  **Fetch Initial Data**: In a `useEffect` hook, fetch the user's `apps` and `campaigns` from your API and populate the state.
-* 2.  **Search Apps**: The `searchQuery` should trigger a call to a backend endpoint (`/api/search-apps?q=...`) that returns a list of matching apps.
-* 3.  **Add App (Search)**: When a user clicks an app from the search results, send a POST request to `/api/apps` with the app's details to save it to the user's profile.
-* 4.  **Add App (Manual)**: When the manual form is submitted, send a POST request to `/api/apps` with the form data, including the base64 `appIcon`. The backend should handle the image upload and save the app data.
-* 5.  **Create Campaign**: When the campaign form is submitted, send a POST request to `/api/campaigns` with the `appId`, `campaignName`, and `budget`.
-*/

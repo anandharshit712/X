@@ -56,6 +56,7 @@ async function fetchTransactions({
       amount::numeric,
       transaction_status,
       coupon_code,
+      payment_method,   -- NEW
       created_at
     FROM public.dashboard_transactions
     ${where}
@@ -79,14 +80,15 @@ async function fetchTransactions({
     type: r.transaction_type,
     amount: r.amount,
     status: r.transaction_status,
-    note: r.coupon_code || null, // schema has no note; reuse coupon_code if you want a comment
+    note: r.coupon_code || null, // legacy note via coupon_code
+    payment_method: r.payment_method || null, // NEW
     created_at: r.created_at,
   }));
 
   return { items, total: Number(countRes.rows?.[0]?.total || 0) };
 }
 
-/** Top-up “receipts” = successful TOP_UP transactions in window */
+/** Top-up receipts (derived list for UI) */
 async function fetchTopupReceipts({ advertiserId, startISO, endISO }) {
   const sql = `
     SELECT
@@ -113,15 +115,21 @@ async function fetchTopupReceipts({ advertiserId, startISO, endISO }) {
 }
 
 /** Insert a successful TOP_UP transaction (simulated gateway success) */
-async function insertTopupTransaction({ advertiserId, amount, note }) {
+async function insertTopupTransaction({ advertiserId, amount, payment_method, note }) {
   const sql = `
     INSERT INTO public.dashboard_transactions
-      (advertiser_id, amount, transaction_status, transaction_type, coupon_code, created_at)
-    VALUES ($1, $2, 'SUCCESS', 'TOP_UP', $3, NOW())
-    RETURNING transaction_id, transaction_type, amount::numeric, transaction_status, coupon_code, created_at;
+      (advertiser_id, amount, transaction_status, transaction_type, coupon_code, payment_method, created_at)
+    VALUES ($1, $2, 'SUCCESS', 'TOP_UP', $3, $4, NOW())
+    RETURNING transaction_id, transaction_type, amount::numeric, transaction_status, coupon_code, payment_method, created_at;
   `;
   // No 'note' column — storing any note in coupon_code if provided
-  const { rows } = await pool.query(sql, [advertiserId, amount, note || null]);
+  const { rows } = await pool.query(sql, [
+    advertiserId,
+    amount,
+    note || null,
+    payment_method,
+  ]);
+
   const r = rows[0];
   return {
     id: r.transaction_id,
@@ -129,6 +137,7 @@ async function insertTopupTransaction({ advertiserId, amount, note }) {
     amount: r.amount,
     status: r.transaction_status,
     note: r.coupon_code || null,
+    payment_method: r.payment_method || null,
     created_at: r.created_at,
   };
 }

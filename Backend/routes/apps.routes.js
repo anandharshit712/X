@@ -20,7 +20,7 @@ try {
   AppIdParamsSchema = null;
 }
 
-const controller = require("../controllers/apps.controller");
+const controller = require("../controllers/app.controller");
 
 const r = Router();
 

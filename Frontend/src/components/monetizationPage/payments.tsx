@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { getPayments } from '../../services/payments';
+import { getApps } from '../../services/apps';
 import { Search, Calendar, ChevronDown, Inbox } from 'lucide-react';
 
-// --- MOCK DATA AND TYPES ---
+// --- DATA AND TYPES ---
 
 // Defines the structure for a single transaction record
 interface TransactionData {
@@ -10,17 +12,6 @@ interface TransactionData {
   amount: number;
   app: string;
 }
-
-// Mock data for the list of transactions
-const mockTransactions: TransactionData[] = [
-  { dateAdded: '2025-07-15', billingMonth: 'June 2025', amount: 12500.00, app: 'Instagram' },
-  { dateAdded: '2025-06-15', billingMonth: 'May 2025', amount: 13963.54, app: 'WhatsApp' },
-  { dateAdded: '2025-05-15', billingMonth: 'April 2025', amount: 11850.75, app: 'Instagram' },
-  { dateAdded: '2025-04-15', billingMonth: 'March 2025', amount: 9500.00, app: 'TikTok' },
-];
-
-// Mock data for the app filter dropdown
-const appOptions = ['All Applications', 'Instagram', 'WhatsApp', 'TikTok'];
 
 // --- HELPER COMPONENTS ---
 
@@ -41,6 +32,7 @@ const LoggedInNavbar = ({ title }: { title: string }) => (
 const PaymentsPage = () => {
   // State for data and loading status
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
+  const [appOptions, setAppOptions] = useState<string[]>(['All Applications']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,13 +41,27 @@ const PaymentsPage = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedApp, setSelectedApp] = useState('All Applications');
 
-  // Effect to simulate fetching data on component mount
+  // Effect to fetch data on component mount
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setTransactions(mockTransactions);
-      setLoading(false);
-    }, 1000); // Simulate network delay
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const paymentsResponse = await getPayments();
+        setTransactions(paymentsResponse.data);
+
+        const appsResponse = await getApps();
+        const appNames = appsResponse.items.map((app: any) => app.app_package);
+        setAppOptions(['All Applications', ...appNames]);
+
+      } catch (err: any) {
+        setError(err.response?.data?.message || "Failed to fetch data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Filter logic
@@ -150,56 +156,3 @@ const PaymentsPage = () => {
 };
 
 export default PaymentsPage;
-
-/*
-* =================================================================
-* == COMPONENT, STATE, AND INTEGRATION DOCUMENTATION
-* =================================================================
-*
-* === COMPONENT: PaymentsPage ===
-* - Purpose: This component displays a history of payments. It provides
-* users with tools to filter the payment records by a search query (month or amount),
-* a specific date, or by application.
-*
-* === STATE VARIABLES ===
-*
-* - `transactions` (Array<TransactionData>):
-* - Holds the list of all payment transaction objects fetched from the backend.
-* - For backend integration: This state should be populated by a GET request to your
-* payments API endpoint (e.g., `/api/payments`).
-*
-* - `loading` (boolean):
-* - Used to display a loading indicator while the initial data is being fetched.
-*
-* - `error` (string | null):
-* - Stores any error messages if the API call fails.
-*
-* - `searchQuery` (string):
-* - Stores the value from the text input used to filter by billing month or amount.
-* - For backend integration: This could be used for client-side filtering (as implemented)
-* or sent as a query parameter (`?q=...`) to the backend for server-side search.
-*
-* - `selectedDate` (string):
-* - Stores the date selected from the date picker (format: 'YYYY-MM-DD').
-* - For backend integration: This should be sent as a `date` query parameter to filter results.
-*
-* - `selectedApp` (string):
-* - Stores the application name selected from the dropdown.
-* - For backend integration: This should be sent as an `app` query parameter.
-*
-* === BACKEND INTEGRATION NOTES ===
-*
-* 1.  **Fetch Payments API**: Create an endpoint like `GET /api/payments`.
-* - This endpoint should return an array of payment objects.
-* - Each object should match the `TransactionData` interface.
-* - The `useEffect` hook should be updated to call this API instead of using mock data.
-*
-* 2.  **Server-Side Filtering (Optional but Recommended)**: For better performance with large datasets,
-* implement filtering on the backend. The API endpoint could accept query parameters:
-* - `GET /api/payments?q={searchQuery}&date={selectedDate}&app={selectedApp}`
-* - The frontend would then refetch data from the API whenever a filter changes,
-* instead of filtering the data on the client side.
-*
-* 3.  **Populate App Filter**: The `appOptions` array should be dynamically populated by fetching
-* a list of the user's applications from an endpoint like `GET /api/apps`.
-*/

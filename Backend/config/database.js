@@ -1,11 +1,14 @@
 const { Pool } = require("pg");
-require("dotenv").config();
 
 // Create connection pool for a specific database
 const createPool = (database) => {
+  // Ensure password is handled as string
+  const dbPassword = process.env.DB_PASSWORD;
+
   const config = {
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "postgres",
+    password: String(dbPassword || "" ),
     database: database,
     port: parseInt(process.env.DB_PORT) || 5432,
     max: 20,
@@ -17,10 +20,7 @@ const createPool = (database) => {
         : false,
   };
 
-  // Handle password properly
-  if (process.env.DB_PASSWORD && process.env.DB_PASSWORD.trim() !== "") {
-    config.password = process.env.DB_PASSWORD;
-  }
+  // Add any additional configuration if needed in the future
 
   return new Pool(config);
 };

@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, X, Loader2 } from 'lucide-react';
+import { getBalance, getTransactions, getWalletInvoices, addFunds } from '../../services/wallet';
+import { format } from 'date-fns';
 
-// --- Mock Components & Data ---
+// --- HELPER COMPONENTS ---
 
-const LoggedInNavbar = ({ title, onAddFundsClick }) => (
+const LoggedInNavbar = ({ title, onAddFundsClick }: { title: string; onAddFundsClick: () => void }) => (
   <div className="flex justify-between items-center mb-8 pb-4 border-b">
     <h1 className="text-3xl font-bold text-gray-800">{title}</h1>
     <div className="flex items-center space-x-4">
@@ -17,47 +19,172 @@ const LoggedInNavbar = ({ title, onAddFundsClick }) => (
   </div>
 );
 
-const initialFundsTransactions = [
-    { id: "TXN001", date: "2024-05-28", description: "Funds Added", amount: 500.00, status: "Completed", type: "Credit" },
-    { id: "TXN002", date: "2024-05-27", description: "Invoice Payment", amount: -125.50, status: "Completed", type: "Debit" },
-    { id: "TXN003", date: "2024-05-26", description: "Funds Added", amount: 1000.00, status: "Completed", type: "Credit" },
-    { id: "TXN004", date: "2024-05-25", description: "Service Fee", amount: -24.75, status: "Completed", type: "Debit" },
-];
+// Add Funds Modal Component
+const AddFundsModal = ({ isOpen, onClose, currentBalance, onFundsAdded }: { isOpen: boolean; onClose: () => void; currentBalance: number | null; onFundsAdded: () => void }) => {
+    if (!isOpen) return null;
 
-const initialInvoices = [
-    { id: "INV001", date: "2024-05-28", client: "ABC Corp", amount: 850.00, dueDate: "2024-05-30", status: "Paid" },
-    { id: "INV002", date: "2024-05-27", client: "XYZ Ltd", amount: 1200.00, dueDate: "2024-06-01", status: "Pending" },
-    { id: "INV003", date: "2024-05-26", client: "Tech Solutions", amount: 675.25, dueDate: "2024-05-25", status: "Overdue" },
-];
+    const [amountUSD, setAmountUSD] = useState('');
+    const [hasCoupon, setHasCoupon] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-const USD_TO_INR_RATE = 85.171;
+    const CONVERSION_RATE = 85.171;
+    const GST_RATE = 0.18;
+    const MIN_AMOUNT = 50;
+
+    const parsedAmountUSD = parseFloat(amountUSD) || 0;
+    const amountINR = parsedAmountUSD * CONVERSION_RATE;
+    const gstAmount = amountINR * GST_RATE;
+    const totalPayable = amountINR + gstAmount;
+
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (/^\d*\.?\d*$/.test(value)) {
+            setAmountUSD(value);
+        }
+    };
+    
+    const handleAddFunds = async () => {
+        setError(null);
+        if (parsedAmountUSD < MIN_AMOUNT) {
+            setError(`Minimum funds to add is $${MIN_AMOUNT}.`);
+            return;
+        }
+        setLoading(true);
+        try {
+            await addFunds({ amount: parsedAmountUSD, method: "Bank Transfer" }); // Assuming method is always Bank Transfer for now
+            onFundsAdded(); // Callback to refresh parent data
+            onClose(); // Close modal on success
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Failed to add funds.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md relative font-sans">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+                    <X size={24} />
+                </button>
+
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Add Funds to Wallet</h2>
+                <p className="text-sm text-indigo-600 font-semibold mb-6">Available Funds: ${currentBalance !== null ? currentBalance.toFixed(2) : 'N/A'}</p>
+
+                {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+                <div className="mb-6">
+                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">Enter Amount</label>
+                    <input
+                        id="amount"
+                        type="text"
+                        value={amountUSD}
+                        onChange={handleAmountChange}
+                        placeholder="Minimum funds is $50"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                    />
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3 text-gray-700">
+                    <div className="flex justify-between items-center">
+                        <span>Funds to be added:</span>
+                        <span className="font-semibold">${parsedAmountUSD.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span>Funds in INR:</span>
+                        <span className="font-semibold">₹{amountINR.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span>GST (18%):</span>
+                        <span className="font-semibold">₹{gstAmount.toFixed(2)}</span>
+                    </div>
+                    <hr className="border-t border-gray-200" />
+                    <div className="flex justify-between items-center text-lg">
+                        <span className="font-bold text-gray-800">Total Payable:</span>
+                        <span className="font-bold text-gray-800">₹{totalPayable.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div className="text-center text-xs text-indigo-500 bg-indigo-50 rounded-md py-1 mb-6">
+                    Applied Conversion Rate: $1 ≈ ₹{CONVERSION_RATE}
+                </div>
+
+                {/* Coupon Code */}
+                <div className="flex items-center mb-6">
+                    <input
+                        id="coupon"
+                        type="checkbox"
+                        checked={hasCoupon}
+                        onChange={(e) => setHasCoupon(e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    />
+                    <label htmlFor="coupon" className="ml-2 block text-sm text-gray-900">
+                        I have a coupon code
+                    </label>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-colors"
+                        disabled={loading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleAddFunds}
+                        className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors"
+                        disabled={parsedAmountUSD < MIN_AMOUNT || loading}
+                    >
+                        {loading ? 'Adding...' : 'Add Funds'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- Main Funds Page Component ---
 
-const FundsPage = () => {
+const AcquisitionFundsPage = () => {
   const [activeTab, setActiveTab] = useState('funds');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddFundsModalOpen, setAddFundsModalOpen] = useState(false);
   
   // State for data, assuming it would be fetched from an API
-  const [walletBalance, setWalletBalance] = useState(157.00);
-  const [fundsTransactions, setFundsTransactions] = useState(initialFundsTransactions);
-  const [invoices, setInvoices] = useState(initialInvoices);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [fundsTransactions, setFundsTransactions] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddFunds = (amountToAdd) => {
-    const newBalance = walletBalance + amountToAdd;
-    setWalletBalance(newBalance);
+  const fetchWalletData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [balanceRes, transactionsRes, invoicesRes] = await Promise.all([
+        getBalance(),
+        getTransactions(),
+        getWalletInvoices(),
+      ]);
+      setWalletBalance(balanceRes.data.balance);
+      setFundsTransactions(transactionsRes.data.items);
+      setInvoices(invoicesRes.data.items);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to fetch wallet data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const newTransaction = {
-      id: `TXN${String(fundsTransactions.length + 1).padStart(3, '0')}`,
-      date: new Date().toISOString().split('T')[0],
-      description: "Funds Added",
-      amount: amountToAdd,
-      status: "Completed",
-      type: "Credit",
-    };
-    setFundsTransactions([newTransaction, ...fundsTransactions]);
-    setAddFundsModalOpen(false);
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
+
+  const handleAddFunds = () => {
+    // This is handled by the AddFundsModal now
+    // The modal calls fetchWalletData on success
   };
 
   const filteredFunds = useMemo(() =>
@@ -72,7 +199,7 @@ const FundsPage = () => {
       i.client.toLowerCase().includes(searchQuery.toLowerCase())
     ), [invoices, searchQuery]);
     
-  const getStatusClass = (status) => {
+  const getStatusClass = (status: string) => {
     switch (status.toLowerCase()) {
         case 'completed':
         case 'paid':
@@ -86,6 +213,14 @@ const FundsPage = () => {
     }
   };
 
+  if (loading) {
+    return <div className="flex-1 p-8 min-h-screen bg-gray-50">Loading wallet data...</div>;
+  }
+
+  if (error) {
+    return <div className="flex-1 p-8 min-h-screen bg-gray-50 text-red-500">Error: {error}</div>;
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen p-8">
       <LoggedInNavbar title="Funds and Invoices" onAddFundsClick={() => setAddFundsModalOpen(true)} />
@@ -95,8 +230,8 @@ const FundsPage = () => {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-sm font-semibold text-gray-500 mb-1">Wallet Balance</h2>
-            <p className="text-4xl font-bold text-indigo-600">${walletBalance.toFixed(2)} <span className="text-2xl text-gray-400">USD</span></p>
-            <p className="text-sm text-gray-500 mt-1">≈ ₹{(walletBalance * USD_TO_INR_RATE).toFixed(2)} INR</p>
+            <p className="text-4xl font-bold text-indigo-600">${walletBalance !== null ? walletBalance.toFixed(2) : 'N/A'} <span className="text-2xl text-gray-400">USD</span></p>
+            <p className="text-sm text-gray-500 mt-1">≈ ₹{(walletBalance !== null ? walletBalance * USD_TO_INR_RATE : 0).toFixed(2)} INR</p>
           </div>
           <button onClick={() => setAddFundsModalOpen(true)} className="bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors flex items-center gap-2">
             <Plus size={18} /> Add Funds
@@ -118,10 +253,10 @@ const FundsPage = () => {
       <div className="border-b mb-6">
         <nav className="flex space-x-8">
           <button onClick={() => setActiveTab('funds')} className={`pb-2 text-sm font-semibold border-b-2 ${activeTab === 'funds' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            Funds ({filteredFunds.length})
+            Funds ({fundsTransactions.length})
           </button>
           <button onClick={() => setActiveTab('invoices')} className={`pb-2 text-sm font-semibold border-b-2 ${activeTab === 'invoices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            Invoices ({filteredInvoices.length})
+            Invoices ({invoices.length})
           </button>
         </nav>
       </div>
@@ -139,7 +274,7 @@ const FundsPage = () => {
               {filteredFunds.map(t => (
                 <tr key={t.id}>
                   <td className="px-6 py-4 font-semibold text-gray-800">{t.id}</td>
-                  <td className="px-6 py-4 text-gray-600">{t.date}</td>
+                  <td className="px-6 py-4 text-gray-600">{format(new Date(t.created_at), 'MMM dd, yyyy')}</td>
                   <td className="px-6 py-4 text-gray-600">{t.description}</td>
                   <td className={`px-6 py-4 font-semibold ${t.type === 'Credit' ? 'text-green-600' : 'text-red-600'}`}>
                     {t.type === 'Credit' ? '+' : '-'}${Math.abs(t.amount).toFixed(2)}
@@ -160,10 +295,10 @@ const FundsPage = () => {
               {filteredInvoices.map(i => (
                 <tr key={i.id}>
                   <td className="px-6 py-4 font-semibold text-gray-800">{i.id}</td>
-                  <td className="px-6 py-4 text-gray-600">{i.date}</td>
+                  <td className="px-6 py-4 text-gray-600">{format(new Date(i.created_at), 'MMM dd, yyyy')}</td>
                   <td className="px-6 py-4 text-gray-600">{i.client}</td>
                   <td className="px-6 py-4 font-semibold text-gray-800">${i.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-gray-600">{i.dueDate}</td>
+                  <td className="px-6 py-4 text-gray-600">{format(new Date(i.due_date), 'MMM dd, yyyy')}</td>
                   <td className="px-6 py-4"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(i.status)}`}>{i.status}</span></td>
                 </tr>
               ))}
@@ -172,158 +307,9 @@ const FundsPage = () => {
         )}
       </div>
 
-      {isAddFundsModalOpen && <AddFundsModal onClose={() => setAddFundsModalOpen(false)} onAddFunds={handleAddFunds} />}
+      {isAddFundsModalOpen && <AddFundsModal isOpen={isAddFundsModalOpen} onClose={fetchWalletData} currentBalance={walletBalance} onFundsAdded={fetchWalletData} />}
     </div>
   );
 };
 
-// --- Add Funds Modal Component ---
-const AddFundsModal = ({ onClose, onAddFunds }) => {
-    const [amount, setAmount] = useState('');
-    const GST_RATE = 0.18;
-
-    const amountUSD = parseFloat(amount) || 0;
-    const amountINR = amountUSD * USD_TO_INR_RATE;
-    const gstAmount = amountINR * GST_RATE;
-
-    const handleConfirmAdd = () => {
-        if (amountUSD >= 50) {
-            onAddFunds(amountUSD);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-800">Add Funds to Wallet</h2>
-                    <p className="text-sm text-indigo-600 font-semibold">Available Funds: $0.000</p>
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-gray-700">Enter Amount</label>
-                        <input
-                            type="number"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            placeholder="Minimum funds is $50"
-                            className="w-full mt-1 p-2 border border-gray-300 rounded-lg"
-                        />
-                    </div>
-                    <div className="text-sm space-y-2 text-gray-600">
-                        <p>Funds to be added: ${amountUSD.toFixed(2)}</p>
-                        <p>Funds in INR: ₹{amountINR.toFixed(2)}</p>
-                        <p>GST (18%): ₹{gstAmount.toFixed(2)}</p>
-                    </div>
-                    <div className="bg-gray-100 p-2 rounded-lg text-center text-xs text-gray-700">
-                        Applied Conversion Rate: $1 ≈ ₹{USD_TO_INR_RATE}
-                    </div>
-                     <div className="flex items-center">
-                        <input type="checkbox" id="coupon" className="h-4 w-4 text-indigo-600 border-gray-300 rounded"/>
-                        <label htmlFor="coupon" className="ml-2 text-sm text-gray-700">I have a coupon code</label>
-                    </div>
-                </div>
-                <div className="flex justify-end gap-4 mt-6">
-                    <button onClick={onClose} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
-                    <button onClick={handleConfirmAdd} disabled={amountUSD < 50} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">Add Funds</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default FundsPage;
-
-/*
-// ---
-// BACKEND INTEGRATION AND CODE SUMMARY
-// ---
-//
-// This document provides a summary of the state variables used in the `FundsPage` component and instructions for connecting it to a live backend API.
-//
-// ### Code Summary
-//
-// The `FundsPage` component is the main export. It manages the overall view, including the wallet balance, transaction history, and invoices. It uses a few key state variables:
-//
-// -   `activeTab` (String) - Controls whether the 'funds' or 'invoices' table is displayed.
-// -   `searchQuery` (String) - Holds the value of the search input to filter the tables.
-// -   `isAddFundsModalOpen` (Boolean) - Toggles the visibility of the "Add Funds" modal.
-// -   `walletBalance` (Number) - Stores the user's current wallet balance in USD.
-// -   `fundsTransactions` (Array of Objects) - Holds the list of fund transactions (credits/debits).
-// -   `invoices` (Array of Objects) - Holds the list of user invoices.
-//
-// The `AddFundsModal` component is a self-contained form for adding new funds. It takes an `onClose` function to close itself and an `onAddFunds` function to pass the new amount back to the parent `FundsPage`.
-//
-// ### Backend Integration
-//
-// To connect this component to your backend, you will need to replace the initial mock data with data fetched from your API.
-//
-// 1.  **Fetch Initial Data**
-//     * Inside the `FundsPage` component, use a `useEffect` hook to fetch the initial wallet balance, funds transactions, and invoices when the component mounts.
-//
-//     * **Example `useEffect`**
-//         useEffect(() => {
-//             // Replace with your API fetching logic (e.g., using axios or fetch)
-//             const fetchAllData = async () => {
-//                 try {
-//                     // const balanceRes = await axios.get('/api/wallet/balance');
-//                     // setWalletBalance(balanceRes.data.balance);
-//
-//                     // const fundsRes = await axios.get('/api/wallet/transactions');
-//                     // setFundsTransactions(fundsRes.data);
-//
-//                     // const invoicesRes = await axios.get('/api/wallet/invoices');
-//                     // setInvoices(invoicesRes.data);
-//                 } catch (error) {
-//                     console.error("Failed to fetch funds data:", error);
-//                 }
-//             };
-//             fetchAllData();
-//         }, []); // Empty dependency array means this runs once on mount
-//
-// 2.  **API Endpoint for Adding Funds**
-//     * In the `handleAddFunds` function within `FundsPage`, you should make a `POST` request to your backend to record the new transaction. The backend should handle the database update.
-//
-//     * **Example `handleAddFunds` update**
-//         const handleAddFunds = async (amountToAdd) => {
-//             try {
-//                 // const response = await axios.post('/api/wallet/add-funds', { amount: amountToAdd });
-//                 
-//                 // Assuming the backend returns the new transaction and updated balance
-//                 // setWalletBalance(response.data.newBalance);
-//                 // setFundsTransactions([response.data.newTransaction, ...fundsTransactions]);
-//
-//                 // For now, we'll keep the local state update for demonstration
-//                 setWalletBalance(walletBalance + amountToAdd);
-//                 // ... (rest of the existing function)
-//
-//                 setAddFundsModalOpen(false);
-//             } catch (error) {
-//                 console.error("Failed to add funds:", error);
-//                 // Optionally, show an error message to the user
-//             }
-//         };
-//
-// 3.  **Expected API Data Formats**
-//     * /api/wallet/balance - Should return JSON like { "balance": 157.00 }.
-//     * /api/wallet/transactions - Should return an array of objects, where each object has the structure:
-//         {
-//           "id": "TXN001",
-//           "date": "2024-05-28",
-//           "description": "Funds Added",
-//           "amount": 500.00,
-//           "status": "Completed",
-//           "type": "Credit"
-//         }
-//         Note - `amount` should be positive for credits and negative for debits, or you can use the `type` field to distinguish.
-//     * /api/wallet/invoices - Should return an array of objects, where each object has the structure:
-//         {
-//           "id": "INV001",
-//           "date": "2024-05-28",
-//           "client": "ABC Corp",
-//           "amount": 850.00,
-//           "dueDate": "2024-05-30",
-//           "status": "Paid"
-//         }
-*/
+export default AcquisitionFundsPage;

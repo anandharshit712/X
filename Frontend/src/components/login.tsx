@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import api from "../lib/api";
 
 const Login = () => {
   // User credentials
@@ -40,7 +41,10 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
-      const response = await axios.post("http://localhost:3000/api/auth/login", { email, password });
+      const response = await api.post("http://localhost:3000/api/auth/login", {
+        email,
+        password,
+      });
       const { data } = response.data;
       // Save token and session info
       localStorage.setItem("token", data.token);
@@ -52,7 +56,7 @@ const Login = () => {
         (Date.now() + 24 * 60 * 60 * 1000).toString()
       );
       setIsLoading(false);
-      navigate("/sidebar"); // Change to your dashboard route
+      navigate("/monetization/dashboard");
     } catch (err) {
       setIsLoading(false);
       if (err.response && err.response.data && err.response.data.message) {

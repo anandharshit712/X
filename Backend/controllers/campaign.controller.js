@@ -1,5 +1,5 @@
 // controllers/campaigns.controller.js
-const svc = require("../services/campaigns.service");
+const svc = require("../services/campaign.service");
 
 async function listCampaigns(req, res) {
   const advertiserId = req.user?.advertiser_id;

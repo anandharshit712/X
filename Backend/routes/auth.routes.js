@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { v4: uuidv4 } = require("uuid");
-const { pool } = require("../config/database");
+const { pools } = require("../config/database");
+const pool = pools.dashboard; // Use the dashboard pool for auth operations
 const { generateToken } = require("../middleware/auth");
 const {
   validateRegistration,

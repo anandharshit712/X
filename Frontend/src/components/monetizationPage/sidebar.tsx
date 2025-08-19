@@ -36,13 +36,16 @@ import {
   Legend,
 } from "recharts";
 import { addDays, format } from "date-fns";
+import { getAnalytics } from "../../services/analytics";
+import { getApps } from "../../services/apps";
 
 // Monetization page imports
-import Analytics from "./analytics";
+// import Analytics from "./analytics"; // Now in this file
 import AppStats from "./appStats";
 import Dashboard from "./dashboard";
 import Payments from "./payments";
 import Invoice from "./invoice";
+import WalletPage from "./wallet"; // New import for WalletPage
 
 // Acquisition page imports
 import AnalyticsA from "../AcquisitionPage/analyticsA";
@@ -78,88 +81,6 @@ interface AppOption {
   name: string;
 }
 
-// Mock data for the list of apps to filter by
-const appOptions: AppOption[] = [
-  { id: "all", name: "All Applications" },
-  { id: "31892242", name: "Instagram" },
-  { id: "31892243", name: "WhatsApp" },
-  { id: "1", name: "TikTok" },
-];
-
-// Mock analytics data
-const mockAnalyticsData: AnalyticsData[] = [
-  {
-    date: "2025-07-01",
-    revenue: 220,
-    conversions: 20,
-    clicks: 1500,
-    cr: 1.33,
-    arpu: 0.15,
-    appName: "Instagram",
-    country: "IN",
-  },
-  {
-    date: "2025-07-02",
-    revenue: 250,
-    conversions: 22,
-    clicks: 1600,
-    cr: 1.38,
-    arpu: 0.16,
-    appName: "WhatsApp",
-    country: "US",
-  },
-  {
-    date: "2025-07-03",
-    revenue: 300,
-    conversions: 25,
-    clicks: 1800,
-    cr: 1.39,
-    arpu: 0.17,
-    appName: "Instagram",
-    country: "IN",
-  },
-  {
-    date: "2025-07-04",
-    revenue: 280,
-    conversions: 24,
-    clicks: 1750,
-    cr: 1.37,
-    arpu: 0.16,
-    appName: "TikTok",
-    country: "UK",
-  },
-  {
-    date: "2025-07-05",
-    revenue: 350,
-    conversions: 30,
-    clicks: 2000,
-    cr: 1.5,
-    arpu: 0.18,
-    appName: "WhatsApp",
-    country: "US",
-  },
-  {
-    date: "2025-07-06",
-    revenue: 400,
-    conversions: 35,
-    clicks: 2200,
-    cr: 1.59,
-    arpu: 0.18,
-    appName: "Instagram",
-    country: "IN",
-  },
-  {
-    date: "2025-07-07",
-    revenue: 380,
-    conversions: 33,
-    clicks: 2100,
-    cr: 1.57,
-    arpu: 0.18,
-    appName: "TikTok",
-    country: "UK",
-  },
-];
-
 // Navbar placeholder for Analytics Page
 const LoggedInNavbar = ({ title }: { title: string }) => (
   <div className="flex justify-between items-center mb-8">
@@ -189,7 +110,10 @@ const MetricCard = ({
 // Main Analytics Page Component
 const AnalyticsPage = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
+  const [appOptions, setAppOptions] = useState<AppOption[]>([]);
+  const [kpis, setKpis] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({
     startDate: addDays(new Date(), -30),
     endDate: new Date(),
@@ -203,6 +127,7 @@ const AnalyticsPage = () => {
   );
   const calendarRef = useRef<HTMLDivElement>(null);
 
+  // Load calendar assets
   useEffect(() => {
     if (isDateRangeLoaded) return;
     const loadAsset = (
@@ -241,18 +166,75 @@ const AnalyticsPage = () => {
     }
   }, [isDateRangeLoaded]);
 
+  // Fetch app options for filter dropdown
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      let data = mockAnalyticsData;
-      if (selectedApp !== "all") {
-        const appName = appOptions.find((app) => app.id === selectedApp)?.name;
-        data = data.filter((row) => row.appName === appName);
+    const fetchApps = async () => {
+      try {
+        const response = await getApps();
+        const apps = response.data.map((app: any) => ({ id: app.app_id, name: app.name }));
+        setAppOptions([{ id: "all", name: "All Applications" }, ...apps]);
+      } catch (err) {
+        console.error("Failed to fetch apps", err);
       }
-      setAnalyticsData(data);
-      setLoading(false);
-    }, 500);
-  }, [dateRange, selectedApp, groupByApp]);
+    };
+    fetchApps();
+  }, []);
+
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const from = format(dateRange.startDate, "yyyy-MM-dd");
+        const to = format(dateRange.endDate, "yyyy-MM-dd");
+        const app_id = selectedApp === "all" ? undefined : selectedApp;
+
+        // Fetch all metrics in parallel
+        const [revenueRes, conversionsRes, clicksRes] = await Promise.all([
+          getAnalytics({ from, to, app_id, metric: "revenue" }),
+          getAnalytics({ from, to, app_id, metric: "conversions" }),
+          getAnalytics({ from, to, app_id, metric: "clicks" }),
+        ]);
+
+        // Combine timeseries data
+        const combinedData: Record<string, any> = {};
+        revenueRes.data.timeseries.forEach((item: any) => {
+          if (!combinedData[item.day]) combinedData[item.day] = { date: item.day };
+          combinedData[item.day].revenue = item.value;
+        });
+        conversionsRes.data.timeseries.forEach((item: any) => {
+          if (!combinedData[item.day]) combinedData[item.day] = { date: item.day };
+          combinedData[item.day].conversions = item.value;
+        });
+        clicksRes.data.timeseries.forEach((item: any) => {
+          if (!combinedData[item.day]) combinedData[item.day] = { date: item.day };
+          combinedData[item.day].clicks = item.value;
+        });
+
+        const finalData = Object.values(combinedData).map((d: any) => ({
+          ...d,
+          cr: d.clicks > 0 ? (d.conversions / d.clicks) * 100 : 0,
+          arpu: d.conversions > 0 ? d.revenue / d.conversions : 0,
+        }));
+
+        setAnalyticsData(finalData);
+        setKpis({
+            revenue: revenueRes.data.kpis,
+            conversions: conversionsRes.data.kpis,
+            clicks: clicksRes.data.kpis,
+        });
+
+      } catch (err: any) {
+        setError(err.response?.data?.message || "Failed to fetch analytics data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [dateRange, selectedApp]);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -267,19 +249,13 @@ const AnalyticsPage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarRef]);
 
-  const totalRevenue = analyticsData.reduce((sum, row) => sum + row.revenue, 0);
-  const totalClicks = analyticsData.reduce((sum, row) => sum + row.clicks, 0);
-  const totalConversions = analyticsData.reduce(
-    (sum, row) => sum + row.conversions,
-    0
-  );
+  const totalRevenue = kpis.revenue?.total || 0;
+  const totalClicks = kpis.clicks?.total || 0;
+  const totalConversions = kpis.conversions?.total || 0;
   const conversionRate =
     totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
   const averageARPU =
-    analyticsData.length > 0
-      ? analyticsData.reduce((sum, row) => sum + row.arpu, 0) /
-        analyticsData.length
-      : 0;
+    totalConversions > 0 ? totalRevenue / totalConversions : 0;
 
   const metricCards = [
     { title: "Revenue", value: `₹${totalRevenue.toLocaleString("en-IN")}` },
@@ -297,6 +273,7 @@ const AnalyticsPage = () => {
     // The outer div no longer needs padding or background color, as the <main> tag handles it.
     <div>
       <LoggedInNavbar title="Analytics" />
+      {error && <div className="bg-red-100 text-red-700 p-4 rounded-md mb-4">{error}</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div className="relative" ref={calendarRef}>
           <button
@@ -644,6 +621,12 @@ const Sidebar = ({
                 icon={<Banknote size={22} />}
                 collapsed={collapsed}
               />
+              <NavItem
+                to="/monetization/wallet"
+                label="Wallet"
+                icon={<Wallet size={22} />}
+                collapsed={collapsed}
+              />
             </>
           )}
 
@@ -742,9 +725,10 @@ const Sidebars = () => {
           {/* Monetization Routes */}
           <Route path="/monetization/dashboard" element={<Dashboard />} />
           <Route path="/monetization/manage-apps" element={<AppStats />} />
-          <Route path="/monetization/analytics" element={<Analytics />} />
+          <Route path="/monetization/analytics" element={<AnalyticsPage />} />
           <Route path="/monetization/invoice" element={<Invoice />} />
           <Route path="/monetization/payments" element={<Payments />} />
+          <Route path="/monetization/wallet" element={<WalletPage />} /> {/* New route for WalletPage */}
 
           {/* Acquisition Routes */}
           <Route path="/acquisition/dashboard" element={<DashboardA />} />

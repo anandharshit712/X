@@ -1,5 +1,6 @@
 // server.js
-require("dotenv").config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
 const express = require("express");
 const cors = require("cors");
@@ -11,6 +12,15 @@ const PORT = process.env.PORT || 3000;
 
 // ensure pools are initialized (uses your existing config/database.js)
 require("./config/database");
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:3000"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // core middleware
 app.use(helmet());
@@ -36,7 +46,7 @@ const authRoutes = require("./routes/auth.routes"); // your working auth route f
 app.use("/api/auth", authRoutes);
 
 // DASHBOARD (new structured route)
-const dashboardRoutes = require("./routes/dashboard.routes");
+const dashboardRoutes = require("./routes/dashboard.route");
 app.use("/api/dashboard", dashboardRoutes);
 
 // ANALYTICS
@@ -68,7 +78,7 @@ const settingsRoutes = require("./routes/settings.routes");
 app.use("/api/settings", settingsRoutes);
 
 // CAMPAIGNS
-const campaignsRoutes = require("./routes/campaigns.routes");
+const campaignsRoutes = require("./routes/campaign.routes");
 app.use("/api/campaigns", campaignsRoutes);
 
 // ---------- ERROR HANDLER ----------

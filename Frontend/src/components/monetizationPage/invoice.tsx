@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { listInvoices, uploadInvoice } from '../../services/invoices';
 import { Calendar, Upload, FileText, CheckCircle, AlertCircle, X, Download } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
-// --- MOCK DATA AND TYPES ---
+// --- DATA AND TYPES ---
 
 // Defines the structure for invoice data fetched from the backend
 interface InvoiceData {
@@ -13,12 +14,6 @@ interface InvoiceData {
 
 // Defines the structure for the status of an invoice
 type InvoiceStatus = 'open' | 'validation' | 'rejected' | 'approved' | 'paid';
-
-// Mock data for available invoices
-const invoicesFromDatabase: InvoiceData[] = [
-  { month: "May 2025", offerwallPayout: 13131.69, deductions: 1298.18 },
-  { month: "April 2025", offerwallPayout: 12131.59, deductions: 2298.18 },
-];
 
 // --- HELPER COMPONENTS ---
 
@@ -90,6 +85,8 @@ const InvoicesPage = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date(2025, 4)); // Default to May 2025
     const [currentInvoice, setCurrentInvoice] = useState<InvoiceData | null>(null);
     const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus>('open');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     
     // State for modals
     const [modalStep, setModalStep] = useState(0); // 0: closed, 1: requirements, 2: upload, 3: final details
@@ -101,11 +98,35 @@ const InvoicesPage = () => {
 
     // Effect to find and set the current invoice data when the month changes
     useEffect(() => {
-        const monthStr = format(selectedMonth, "MMMM yyyy");
-        const foundInvoice = invoicesFromDatabase.find(inv => inv.month === monthStr) || null;
-        setCurrentInvoice(foundInvoice);
-        // Reset status when changing months for demo purposes
-        setInvoiceStatus('open'); 
+        const fetchInvoiceData = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const from = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
+                const to = format(endOfMonth(selectedMonth), 'yyyy-MM-dd');
+                const response = await listInvoices({ from, to });
+                if (response.data && response.data.length > 0) {
+                    // Assuming the first record is the one we want for the month
+                    const invoice = response.data[0];
+                    setCurrentInvoice({
+                        month: format(selectedMonth, "MMMM yyyy"),
+                        offerwallPayout: invoice.offerwall_payout,
+                        deductions: invoice.deductions,
+                    });
+                    setInvoiceStatus(invoice.status || 'open');
+                } else {
+                    setCurrentInvoice(null);
+                    setInvoiceStatus('open');
+                }
+            } catch (err: any) {
+                setError(err.response?.data?.message || "Failed to fetch invoice data.");
+                setCurrentInvoice(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchInvoiceData();
     }, [selectedMonth]);
 
     // Calculations for invoice breakdown
@@ -130,20 +151,25 @@ const InvoicesPage = () => {
     };
 
     // Final submission handler
-    const handleFinalSubmit = (e: React.FormEvent) => {
+    const handleFinalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!invoiceNumber || !dueDate) {
-            alert('Please fill in both Invoice Number and Due Date.');
+        if (!uploadedFile || !invoiceNumber || !dueDate) {
+            alert('Please fill in all fields and upload the invoice.');
             return;
         }
-        console.log({
-            month: currentInvoice?.month,
-            invoiceNumber,
-            dueDate,
-            file: uploadedFile?.name
-        });
-        setInvoiceStatus('validation');
-        setModalStep(0); // Close modal
+        try {
+            const formData = new FormData();
+            formData.append('file', uploadedFile);
+            formData.append('invoice_number', invoiceNumber);
+            formData.append('due_date', dueDate);
+            formData.append('month', format(selectedMonth, 'yyyy-MM'));
+
+            await uploadInvoice(formData);
+            setInvoiceStatus('validation');
+            setModalStep(0); // Close modal
+        } catch (err) {
+            alert("Failed to upload invoice.");
+        }
     };
     
     const renderModalContent = () => {
@@ -259,6 +285,14 @@ const InvoicesPage = () => {
         }
     };
 
+    if (loading) {
+        return <div className="flex-1 p-8 bg-gray-50 min-h-screen">Loading...</div>
+    }
+
+    if (error) {
+        return <div className="flex-1 p-8 bg-gray-50 min-h-screen text-red-500">Error: {error}</div>
+    }
+
     return (
         <div className="flex-1 p-8 bg-gray-50 min-h-screen">
             <LoggedInNavbar title="Invoices" />
@@ -271,9 +305,9 @@ const InvoicesPage = () => {
                     onChange={e => setSelectedMonth(new Date(e.target.value + '-02'))} // Use day 2 to avoid timezone issues
                     className="bg-transparent font-semibold text-purple-600 focus:outline-none"
                 >
-                    {invoicesFromDatabase.map(inv => (
-                        <option key={inv.month} value={format(new Date(inv.month), 'yyyy-MM')}>{inv.month}</option>
-                    ))}
+                    {/* This should be populated with available months from the backend */}
+                    <option value="2025-05">May 2025</option>
+                    <option value="2025-04">April 2025</option>
                     <option value="2025-06">June 2025</option> {/* Example of month with no data */}
                 </select>
                 {currentInvoice ? <CheckCircle size={16} className="text-green-500" /> : <AlertCircle size={16} className="text-red-500" />}
@@ -336,64 +370,3 @@ const InvoicesPage = () => {
 };
 
 export default InvoicesPage;
-
-/*
-* =================================================================
-* == COMPONENT, STATE, AND INTEGRATION DOCUMENTATION
-* =================================================================
-*
-* === COMPONENT: InvoicesPage ===
-* - Purpose: This component allows users to view their monthly invoice breakdowns,
-* track the status of their invoice, and upload their own invoice document through
-* a guided, multi-step process.
-*
-* === STATE VARIABLES ===
-*
-* - `selectedMonth` (Date):
-* - Stores the currently selected month and year for which to display an invoice.
-* - For backend integration: When this date changes, you should query your
-* `/api/invoices` endpoint with the selected month and year to get the relevant data.
-*
-* - `currentInvoice` (InvoiceData | null):
-* - Holds the fetched invoice data for the `selectedMonth`. It's null if no data exists.
-*
-* - `invoiceStatus` (InvoiceStatus):
-* - Tracks the current stage of the invoice process ('open', 'validation', etc.).
-* - For backend integration: This status should be fetched along with the invoice data.
-* After an invoice is submitted, its status should be updated to 'validation' on the backend.
-*
-* - `modalStep` (number):
-* - Controls the multi-step modal flow. 0 is closed, 1 is the requirements view,
-* 2 is the file upload screen, and 3 is the final details form.
-*
-* - `uploadedFile` (File | null):
-* - Stores the user-selected PDF file object before it's submitted.
-* - For backend integration: This file object should be sent to your API,
-* likely using multipart/form-data, to be stored on your server or a cloud storage service.
-*
-* - `invoiceNumber` (string):
-* - Stores the invoice number entered by the user in the final step.
-* - For backend integration: This should be sent along with the uploaded file data.
-*
-* - `dueDate` (string):
-* - Stores the due date entered by the user in the final step.
-* - For backend integration: This should also be sent with the final submission.
-*
-* === BACKEND INTEGRATION NOTES ===
-*
-* 1.  **Fetch Invoice Data**: Create an endpoint like `/api/invoices?month=YYYY-MM`.
-* - On component load and when `selectedMonth` changes, call this endpoint.
-* - The response should contain the `InvoiceData` and the current `invoiceStatus`.
-* - If no invoice exists for that month, the API should return a 404 or an empty response,
-* which will set `currentInvoice` to `null` and show the "No Invoice" UI.
-*
-* 2.  **Submit Invoice**: Create an endpoint like `POST /api/invoices/upload`.
-* - This endpoint should accept multipart/form-data.
-* - The request body should include the `uploadedFile`, `invoiceNumber`, `dueDate`,
-* and the relevant `month`.
-* - The backend should handle storing the file, saving the metadata to the database,
-* and updating the invoice status to 'validation'.
-*
-* 3.  **Invoice Template**: The "Download an invoice template" link should point to a static
-* file (e.g., a .docx or .pdf template) hosted on your server or CDN.
-*/

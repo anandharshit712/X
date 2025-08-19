@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { getApps, searchApps, addApp } from '../../services/apps';
+import { getBalance, addFunds } from '../../services/wallet';
 import { Plus, Search, UploadCloud, X } from 'lucide-react';
 
-// --- Mock Components and Data ---
-// This section mocks dependencies that would be in your project.
+// --- HELPER COMPONENTS ---
 
-// Mock for a generic LoggedInNavbar component
-const LoggedInNavbar = ({ title, onAddFundsClick }) => (
+// LoggedInNavbar component
+const LoggedInNavbar = ({ title, onAddFundsClick }: { title: string; onAddFundsClick: () => void }) => (
   <div className="flex justify-between items-center mb-8 pb-4 border-b">
     <h1 className="text-3xl font-bold text-gray-800">{title}</h1>
     <div className="flex items-center space-x-4">
@@ -22,25 +23,138 @@ const LoggedInNavbar = ({ title, onAddFundsClick }) => (
   </div>
 );
 
-// Mock for an API call to search for apps
-const mockSearchApps = async (query) => {
-  console.log(`Searching for: ${query}`);
-  if (!query) return [];
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  // Return some mock data
-  return [
-    { name: 'SocialApp Pro', id: 'com.social.pro', icon: 'https://placehold.co/100x100/7C3AED/FFFFFF?text=SP' },
-    { name: 'GamerZ Hub', id: 'com.gamerz.hub', icon: 'https://placehold.co/100x100/DB2777/FFFFFF?text=GH' },
-    { name: 'Finance Tracker', id: 'com.finance.tracker', icon: 'https://placehold.co/100x100/10B981/FFFFFF?text=FT' },
-  ].filter(app => app.name.toLowerCase().includes(query.toLowerCase()));
-};
+// Add Funds Modal Component
+const AddFundsModal = ({ isOpen, onClose, currentBalance, onFundsAdded }: { isOpen: boolean; onClose: () => void; currentBalance: number | null; onFundsAdded: () => void }) => {
+    if (!isOpen) return null;
 
+    const [amountUSD, setAmountUSD] = useState('');
+    const [hasCoupon, setHasCoupon] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const CONVERSION_RATE = 85.171;
+    const GST_RATE = 0.18;
+    const MIN_AMOUNT = 50;
+
+    const parsedAmountUSD = parseFloat(amountUSD) || 0;
+    const amountINR = parsedAmountUSD * CONVERSION_RATE;
+    const gstAmount = amountINR * GST_RATE;
+    const totalPayable = amountINR + gstAmount;
+
+    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (/^\d*\.?\d*$/.test(value)) {
+            setAmountUSD(value);
+        }
+    };
+    
+    const handleAddFunds = async () => {
+        setError(null);
+        if (parsedAmountUSD < MIN_AMOUNT) {
+            setError(`Minimum funds to add is $${MIN_AMOUNT}.`);
+            return;
+        }
+        setLoading(true);
+        try {
+            await addFunds({ amount: parsedAmountUSD, method: "Bank Transfer" });
+            onFundsAdded();
+            onClose();
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Failed to add funds.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 w-full max-w-md relative font-sans">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+                    <X size={24} />
+                </button>
+
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Add Funds to Wallet</h2>
+                <p className="text-sm text-indigo-600 font-semibold mb-6">Available Funds: ${currentBalance !== null ? currentBalance.toFixed(2) : 'N/A'}</p>
+
+                {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+                <div className="mb-6">
+                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">Enter Amount</label>
+                    <input
+                        id="amount"
+                        type="text"
+                        value={amountUSD}
+                        onChange={handleAmountChange}
+                        placeholder="Minimum funds is $50"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                    />
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-3 text-gray-700">
+                    <div className="flex justify-between items-center">
+                        <span>Funds to be added:</span>
+                        <span className="font-semibold">${parsedAmountUSD.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span>Funds in INR:</span>
+                        <span className="font-semibold">₹{amountINR.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span>GST (18%):</span>
+                        <span className="font-semibold">₹{gstAmount.toFixed(2)}</span>
+                    </div>
+                    <hr className="border-t border-gray-200" />
+                    <div className="flex justify-between items-center text-lg">
+                        <span className="font-bold text-gray-800">Total Payable:</span>
+                        <span className="font-bold text-gray-800">₹{totalPayable.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div className="text-center text-xs text-indigo-500 bg-indigo-50 rounded-md py-1 mb-6">
+                    Applied Conversion Rate: $1 ≈ ₹{CONVERSION_RATE}
+                </div>
+
+                <div className="flex items-center mb-6">
+                    <input
+                        id="coupon"
+                        type="checkbox"
+                        checked={hasCoupon}
+                        onChange={(e) => setHasCoupon(e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                    />
+                    <label htmlFor="coupon" className="ml-2 block text-sm text-gray-900">
+                        I have a coupon code
+                    </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-colors"
+                        disabled={loading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleAddFunds}
+                        className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 transition-colors"
+                        disabled={parsedAmountUSD < MIN_AMOUNT || loading}
+                    >
+                        {loading ? 'Adding...' : 'Add Funds'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- Main Application Management Component ---
 
-const MyAppsPage = () => {
+const AcquisitionMyAppsPage = () => {
   // Main state for the list of user's applications
-  const [apps, setApps] = useState([]);
+  const [apps, setApps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   // State for controlling modal visibility
   const [isAddAppModalOpen, setAddAppModalOpen] = useState(false);
@@ -49,29 +163,61 @@ const MyAppsPage = () => {
 
   // --- Add App Modal State ---
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   // --- Manual Add App Modal State ---
   const [manualAppName, setManualAppName] = useState("");
   const [manualAppId, setManualAppId] = useState("");
-  const [appIcon, setAppIcon] = useState(null);
+  const [appIcon, setAppIcon] = useState<string | null>(null);
   const [appIconError, setAppIconError] = useState("");
 
-  // --- Add Funds Modal State ---
-  const [fundAmount, setFundAmount] = useState("");
-  const [hasCoupon, setHasCoupon] = useState(false);
-  const USD_TO_INR_RATE = 85.171;
-  const GST_RATE = 0.18;
+  const fetchAppsAndBalance = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [appsResponse, balanceResponse] = await Promise.all([
+        getApps(),
+        getBalance()
+      ]);
+      const formattedApps = appsResponse.items.map((app: any) => ({
+        ...app,
+        id: app.app_id,
+        name: app.app_package, // Using package name as name for now
+        logo: `https://placehold.co/100x100/7F00FF/white?text=${app.app_package.substring(0,2).toUpperCase()}`,
+        dateAdded: new Date(app.created_at).toLocaleDateString('en-GB'),
+      }));
+      setApps(formattedApps);
+      setWalletBalance(balanceResponse.data.balance);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to fetch data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchAppsAndBalance();
+  }, []);
 
   // Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => {
       if (searchQuery) {
         setIsSearching(true);
-        mockSearchApps(searchQuery).then(results => {
-          setSearchResults(results);
+        searchApps(searchQuery).then(response => {
+          const formattedApps = response.items.map((app: any) => ({
+            ...app,
+            id: app.app_id,
+            name: app.app_package, // Using package name as name for now
+            logo: `https://placehold.co/100x100/7F00FF/white?text=${app.app_package.substring(0,2).toUpperCase()}`,
+            dateAdded: new Date(app.created_at).toLocaleDateString('en-GB'),
+          }));
+          setSearchResults(formattedApps);
+          setIsSearching(false);
+        }).catch(err => {
+          console.error("Failed to search apps", err);
+          setSearchResults([]);
           setIsSearching(false);
         });
       } else {
@@ -81,7 +227,7 @@ const MyAppsPage = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const handleImageChange = (e) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setAppIcon(null);
     setAppIconError("");
@@ -104,27 +250,37 @@ const MyAppsPage = () => {
         if (img.width !== img.height) {
           setAppIconError('Image must have a 1:1 aspect ratio.');
         } else {
-          setAppIcon(event.target.result);
+          setAppIcon(event.target.result as string);
         }
       };
-      img.src = event.target.result;
+      img.src = event.target.result as string;
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveManualApp = (e) => {
+  const handleSaveManualApp = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!manualAppName || !manualAppId || !appIcon) {
           alert("Please fill all fields and upload an icon.");
           return;
       }
-      const newApp = {
-          name: manualAppName,
-          id: manualAppId,
-          icon: appIcon,
-      };
-      setApps([...apps, newApp]);
+      try {
+        await addApp({ app_id: manualAppId, app_package: manualAppName, logo: appIcon });
+        fetchAppsAndBalance(); // Refresh apps after adding
+        closeAllModals();
+      } catch (err) {
+        alert("Failed to add app manually.");
+      }
+  };
+
+  const handleAddAppFromSearch = async (app: any) => {
+    try {
+      await addApp({ app_id: app.id, app_package: app.name, logo: app.icon });
+      fetchAppsAndBalance(); // Refresh apps after adding
       closeAllModals();
+    } catch (err) {
+      alert("Failed to add app from search.");
+    }
   };
 
   const closeAllModals = () => {
@@ -138,116 +294,15 @@ const MyAppsPage = () => {
     setManualAppId("");
     setAppIcon(null);
     setAppIconError("");
-    setFundAmount("");
-    setHasCoupon(false);
   };
 
-  // --- Render Methods for Modals ---
+  if (loading) {
+    return <div className="flex-1 p-8 min-h-screen bg-gray-50">Loading...</div>;
+  }
 
-  const renderAddAppModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Add Your App</h2>
-        <input
-          type="text"
-          placeholder="Search Apps..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-        />
-        <div className="my-4 h-48 overflow-y-auto">
-          {isSearching && <p className="text-center text-gray-500">Searching...</p>}
-          {!isSearching && searchResults.map((app) => (
-            <div key={app.id} onClick={() => { setApps([...apps, app]); closeAllModals(); }}
-                 className="flex items-center p-2 rounded-lg hover:bg-gray-100 cursor-pointer">
-              <img src={app.icon} alt={app.name} className="w-10 h-10 rounded-md mr-4" />
-              <div>
-                <p className="font-semibold">{app.name}</p>
-                <p className="text-sm text-gray-500">{app.id}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-gray-600 my-4">
-          Can't find your app?{' '}
-          <button onClick={() => { setAddAppModalOpen(false); setManualAddModalOpen(true); }}
-                  className="text-indigo-600 font-semibold hover:underline">
-            + Add Manually
-          </button>
-        </p>
-        <button onClick={closeAllModals} className="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600">
-          Close
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderManualAddModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <form onSubmit={handleSaveManualApp} className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Add App Manually</h2>
-        <div className="space-y-4">
-          <input type="text" placeholder="App Name" value={manualAppName} onChange={e => setManualAppName(e.target.value)} required className="w-full p-3 border border-gray-300 rounded-lg" />
-          <input type="text" placeholder="App ID" value={manualAppId} onChange={e => setManualAppId(e.target.value)} required className="w-full p-3 border border-gray-300 rounded-lg" />
-          <div className="border rounded-lg p-4">
-            <h3 className="text-gray-500 mb-2">Upload App Icon (PNG only)</h3>
-            <div className="flex items-center gap-4">
-              <label className="w-24 h-24 border-2 border-dashed rounded-full flex items-center justify-center cursor-pointer hover:border-indigo-500">
-                {appIcon ? <img src={appIcon} alt="preview" className="w-full h-full rounded-full object-cover"/> : <UploadCloud size={32} className="text-gray-400"/>}
-                <input type="file" accept="image/png" onChange={handleImageChange} className="hidden"/>
-              </label>
-              <div>
-                <p className="text-sm text-gray-500">Maximum File Size: 500KB</p>
-                <p className="text-sm text-gray-500">Supported File Type: PNG</p>
-                <p className="text-sm text-gray-500">Image Ratio: 1:1</p>
-                {appIconError && <p className="text-sm text-red-500 mt-1">{appIconError}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-4 mt-6">
-          <button type="button" onClick={closeAllModals} className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancel</button>
-          <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save App</button>
-        </div>
-      </form>
-    </div>
-  );
-
-  const renderAddFundsModal = () => {
-    const amount = parseFloat(fundAmount) || 0;
-    const fundsInINR = amount * USD_TO_INR_RATE;
-    const gst = fundsInINR * GST_RATE;
-    const total = fundsInINR + gst;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md relative">
-                <button onClick={closeAllModals} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={24}/></button>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Add Funds to Wallet</h2>
-                <p className="text-right text-indigo-600 font-semibold">Available Funds: $0.000</p>
-                <div className="mt-4 space-y-3">
-                    <label className="font-semibold text-gray-700">Enter Amount</label>
-                    <input type="number" placeholder="Minimum funds is $50" value={fundAmount} onChange={e => setFundAmount(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg" />
-                    <div className="p-4 bg-gray-50 rounded-lg space-y-2 text-gray-600">
-                        <p>Funds to be added: ${amount.toFixed(2)}</p>
-                        <p>Funds in INR: ₹{fundsInINR.toFixed(2)}</p>
-                        <p>GST (18%): ₹{gst.toFixed(2)}</p>
-                        <p className="font-bold text-gray-800">Total Payable: ₹{total.toFixed(2)}</p>
-                        <p className="text-xs text-center p-2 bg-indigo-100 text-indigo-700 rounded-md">Applied Conversion Rate: $1 ≈ ₹{USD_TO_INR_RATE}</p>
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="coupon" checked={hasCoupon} onChange={e => setHasCoupon(e.target.checked)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded"/>
-                        <label htmlFor="coupon" className="ml-2 text-gray-700">I have a coupon code</label>
-                    </div>
-                </div>
-                <div className="flex justify-end gap-4 mt-6">
-                    <button type="button" onClick={closeAllModals} className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancel</button>
-                    <button type="button" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Funds</button>
-                </div>
-            </div>
-        </div>
-    );
-  };
+  if (error) {
+    return <div className="flex-1 p-8 min-h-screen bg-gray-50 text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen p-8 font-sans">
@@ -275,7 +330,7 @@ const MyAppsPage = () => {
              {apps.map((app, index) => (
                 <div key={index} className="grid grid-cols-2 items-center p-4 border-b last:border-b-0">
                     <div className="flex items-center gap-4">
-                        <img src={app.icon} alt={app.name} className="w-12 h-12 rounded-lg object-cover" />
+                        <img src={app.logo} alt={app.name} className="w-12 h-12 rounded-lg object-cover" />
                         <div>
                             <p className="font-semibold text-gray-800">{app.name}</p>
                             <p className="text-sm text-gray-500">{app.id}</p>
@@ -298,9 +353,9 @@ const MyAppsPage = () => {
 
       {isAddAppModalOpen && renderAddAppModal()}
       {isManualAddModalOpen && renderManualAddModal()}
-      {isAddFundsModalOpen && renderAddFundsModal()}
+      {isAddFundsModalOpen && <AddFundsModal isOpen={isAddFundsModalOpen} onClose={closeAllModals} currentBalance={walletBalance} onFundsAdded={fetchAppsAndBalance} />}
     </div>
   );
 };
 
-export default MyAppsPage;
+export default AcquisitionMyAppsPage;

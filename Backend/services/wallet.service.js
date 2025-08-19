@@ -12,14 +12,15 @@ function resolveDateRange(from, to) {
 }
 
 async function getBalance({ advertiserId }) {
-  // Prefer the latest explicit balance snapshot; otherwise compute from transactions
+  // Prefer latest snapshot; otherwise compute from transactions
   const snapshot = await walletRepo.fetchLatestBalance({ advertiserId });
-  if (snapshot)
+  if (snapshot) {
     return {
       advertiser_id: advertiserId,
       balance: Number(snapshot.balance || 0),
       as_of: snapshot.as_of,
     };
+  }
 
   const computed = await walletRepo.computeBalanceFromTransactions({
     advertiserId,
@@ -50,7 +51,8 @@ async function listTransactions({ advertiserId, from, to, page, size, type }) {
       type: t.type, // TOP_UP | SPEND | REFUND | ADJUSTMENT
       amount: Number(t.amount || 0),
       status: t.status, // SUCCESS | FAILED | PENDING
-      note: t.note || null,
+      note: t.note || null, // legacy: stored in coupon_code
+      payment_method: t.payment_method || null, // NEW
       created_at: t.created_at,
     })),
   };
@@ -58,29 +60,27 @@ async function listTransactions({ advertiserId, from, to, page, size, type }) {
 
 async function listReceipts({ advertiserId, from, to }) {
   const { startISO, endISO } = resolveDateRange(from, to);
-  const items = await walletRepo.fetchTopupReceipts({
+  const receipts = await walletRepo.fetchTopupReceipts({
     advertiserId,
     startISO,
     endISO,
   });
-  return {
-    window: { from: startISO, to: endISO },
-    items: items.map((r) => ({
-      id: r.id,
-      amount: Number(r.amount || 0),
-      status: r.status,
-      created_at: r.created_at,
-      receipt_number: r.receipt_number, // derived token/sequence if available
-    })),
-  };
+  return receipts.map((r) => ({
+    id: r.id,
+    amount: Number(r.amount || 0),
+    status: r.status,
+    created_at: r.created_at,
+    receipt_number: r.receipt_number, // derived token/sequence if available
+  }));
 }
 
-async function addFunds({ advertiserId, amount, note }) {
+async function addFunds({ advertiserId, amount, payment_method, note }) {
   // 1) insert a SUCCESS top-up txn
   const txn = await walletRepo.insertTopupTransaction({
     advertiserId,
     amount,
-    note,
+    payment_method, // NEW
+    note, // optional, stored in coupon_code for now
   });
 
   // 2) insert a new wallet snapshot row with updated balance

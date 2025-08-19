@@ -1,11 +1,16 @@
 // controllers/apps.controller.js
-const appsService = require("../services/apps.service");
+const appsService = require("../services/app.service");
 
 /** GET /api/apps */
 async function listApps(req, res) {
   const advertiserId = req.user?.advertiser_id;
   if (!advertiserId) {
-    return res.status(401).json({ ok: false, error: { code: "UNAUTHORIZED", message: "Missing advertiser context" } });
+    return res
+      .status(401)
+      .json({
+        ok: false,
+        error: { code: "UNAUTHORIZED", message: "Missing advertiser context" },
+      });
   }
 
   const { q, page = 1, size = 20 } = req.query;
@@ -23,7 +28,12 @@ async function listApps(req, res) {
 async function getAppStats(req, res) {
   const advertiserId = req.user?.advertiser_id;
   if (!advertiserId) {
-    return res.status(401).json({ ok: false, error: { code: "UNAUTHORIZED", message: "Missing advertiser context" } });
+    return res
+      .status(401)
+      .json({
+        ok: false,
+        error: { code: "UNAUTHORIZED", message: "Missing advertiser context" },
+      });
   }
 
   const { app_id } = req.params;
