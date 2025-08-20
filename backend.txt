@@ -5,12 +5,12 @@ backend/
 ├── .env							done
 │
 ├── config/                        # Config files
-│   ├── database.js				done
+│   ├── database.js				    done
 │   └── jwt.js						done
 │
 ├── middleware/                    # Reusable middleware
 │   ├── auth.js                     
-│   ├── errorHandler.js			done
+│   ├── errorHandler.js			    done
 │   ├── validateRequest.js			done
 │   ├── uploadPdf.js				done
 │
@@ -40,12 +40,12 @@ backend/
 │   ├── auth.service.js			
 │   ├── dashboard.service.js		done
 │   ├── analytics.service.js		done
-│   ├── apps.service.js			done
-│   ├── payments.service.js		done
-│   ├── invoices.service.js		done
+│   ├── apps.service.js			    done
+│   ├── payments.service.js		    done
+│   ├── invoices.service.js		    done
 │   ├── billing.service.js			done
 │   ├── wallet.service.js			done
-│   ├── settings.service.js		done
+│   ├── settings.service.js		    done
 │
 ├── repositories/                   # DB queries only
 │   ├── auth.repo.js				
@@ -54,19 +54,10 @@ backend/
 │   ├── apps.repo.js				done
 │   ├── payments.repo.js			done
 │   ├── invoices.repo.js			done
-│   ├── billing.repo.js			done
+│   ├── billing.repo.js			    done
 │   ├── wallet.repo.js				done
 │   ├── settings.repo.js			done
 │
-/*├── validations/                    # Zod/Joi schemas for request validation
-│   ├── auth.validation.js
-│   ├── analytics.validation.js
-│   ├── apps.validation.js
-│   ├── payments.validation.js
-│   ├── invoices.validation.js				NOT DOING THIS VALIDATION PART
-│   ├── billing.validation.js
-│   ├── wallet.validation.js
-│*/
 ├── utils/                          # Helper functions
 │   ├── commission.js				done
 │
