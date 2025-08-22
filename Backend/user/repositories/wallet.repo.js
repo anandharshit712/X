@@ -1,5 +1,5 @@
 // repositories/wallet.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 const pool = pools.dashboard;
 
 /** Latest balance snapshot from dashboard_wallet (by created_at) */
@@ -115,7 +115,12 @@ async function fetchTopupReceipts({ advertiserId, startISO, endISO }) {
 }
 
 /** Insert a successful TOP_UP transaction (simulated gateway success) */
-async function insertTopupTransaction({ advertiserId, amount, payment_method, note }) {
+async function insertTopupTransaction({
+  advertiserId,
+  amount,
+  payment_method,
+  note,
+}) {
   const sql = `
     INSERT INTO public.dashboard_transactions
       (advertiser_id, amount, transaction_status, transaction_type, coupon_code, payment_method, created_at)

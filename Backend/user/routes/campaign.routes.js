@@ -1,7 +1,7 @@
 // routes/campaigns.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../middleware/auth");
-const { asyncHandler } = require("../middleware/asyncHandler");
+const { authenticateToken } = require("../../middleware/auth");
+const { asyncHandler } = require("../../middleware/asyncHandler");
 
 const controller = require("../controllers/campaign.controller");
 const r = Router();

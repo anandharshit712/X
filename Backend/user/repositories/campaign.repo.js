@@ -1,5 +1,5 @@
 // repositories/campaigns.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 const pool = pools.dashboard;
 
 /** List with search, status, date, and pagination */

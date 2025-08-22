@@ -1,0 +1,88 @@
+backend/
+|
+├── middleware/
+│   ├── auth.js                                   (existing user-side auth)
+│   ├── adminAuthAdapter.js                       (tiny wrapper → requireAuth + requireAdmin)  [new]
+│   ├── errorHandler.js
+│   ├── validateRequest.js
+│   ├── uploadPdf.js
+│
+├── routes/                                       # ONE FILE PER ENDPOINT (read‑only)
+│   ├── admin.auth.login.routes.js                (POST /api/admin/auth/login)
+│   │
+│   ├── admin.publisher.overview.routes.js        (GET /api/admin/publisher/overview)
+│   ├── admin.publisher.list.routes.js            (GET /api/admin/publisher/publishers)       ← shared by multiple pages
+│   ├── admin.publisher.detail.routes.js          (GET /api/admin/publisher/publisher/:email) ← detail roll-up
+│   │
+│   ├── admin.publisher.validation.routes.js      (GET /api/admin/publisher/validation?publisher_name=&month=&year=&status=)
+│   ├── admin.publisher.invoices.routes.js        (GET /api/admin/publisher/invoices?publisher_name=&month=&year=&invoice_status=)   ✅ done
+│   ├── admin.publisher.transactions.routes.js    (GET /api/admin/publisher/transactions?publisher_name=&from=&to=&paid_in_full=)
+│   ├── admin.publisher.approvals.routes.js       (GET /api/admin/publisher/approvals?status=&publisher_name=)
+│   │
+│   ├── admin.advertiser.overview.routes.js       (GET /api/admin/advertiser/overview)
+│   ├── admin.advertiser.list.routes.js           (GET /api/admin/advertiser/advertisers)
+│   ├── admin.advertiser.offers.routes.js         (GET /api/admin/advertiser/offers?advertiser_name=&offer_status=&type=)
+│   ├── admin.advertiser.offerRewards.routes.js   (GET /api/admin/advertiser/offers/:offer_id/rewards)
+│   ├── admin.advertiser.offerApprovals.routes.js (GET /api/admin/advertiser/offer-approvals?advertiser_id=&offer_name=)
+│   ├── admin.advertiser.notificationApprovals.routes.js
+│   │                                             (GET /api/admin/advertiser/notification-approvals?advertiser_id=&app_name=&status=&priority=)
+│
+├── controllers/
+│   ├── admin.auth.login.controller.js
+│   │
+│   ├── admin.publisher.overview.controller.js
+│   ├── admin.publisher.list.controller.js
+│   ├── admin.publisher.detail.controller.js
+│   │
+│   ├── admin.publisher.validation.controller.js
+│   ├── admin.publisher.invoices.controller.js                                                                                         ✅ done
+│   ├── admin.publisher.transactions.controller.js
+│   ├── admin.publisher.approvals.controller.js
+│   │
+│   ├── admin.advertiser.overview.controller.js
+│   ├── admin.advertiser.list.controller.js
+│   ├── admin.advertiser.offers.controller.js
+│   ├── admin.advertiser.offerRewards.controller.js
+│   ├── admin.advertiser.offerApprovals.controller.js
+│   ├── admin.advertiser.notificationApprovals.controller.js
+│
+├── services/
+│   ├── admin.auth.login.service.js
+│   │
+│   ├── admin.publisher.overview.service.js
+│   ├── admin.publisher.list.service.js
+│   ├── admin.publisher.detail.service.js
+│   │
+│   ├── admin.publisher.validation.service.js
+│   ├── admin.publisher.invoices.service.js                                                                                           ✅ done
+│   ├── admin.publisher.transactions.service.js
+│   ├── admin.publisher.approvals.service.js
+│   │
+│   ├── admin.advertiser.overview.service.js
+│   ├── admin.advertiser.list.service.js
+│   ├── admin.advertiser.offers.service.js
+│   ├── admin.advertiser.offerRewards.service.js
+│   ├── admin.advertiser.offerApprovals.service.js
+│   ├── admin.advertiser.notificationApprovals.service.js
+│
+├── repositories/
+│   ├── admin.auth.login.repository.js                         (DB: service_employee)
+│   │
+│   ├── admin.publisher.overview.repository.js                 (DB: service_employee_publisher)
+│   ├── admin.publisher.list.repository.js                     (DB: service_employee_publisher)
+│   ├── admin.publisher.detail.repository.js                   (DB: service_employee_publisher)
+│   │
+│   ├── admin.publisher.validation.repository.js               (DB: service_employee_publisher)
+│   ├── admin.publisher.invoices.repository.js                 (DB: service_employee_publisher)                                       ✅ done
+│   ├── admin.publisher.transactions.repository.js             (DB: service_employee_publisher)
+│   ├── admin.publisher.approvals.repository.js                (DB: service_employee_publisher)
+│   │
+│   ├── admin.advertiser.overview.repository.js                (DB: service_employee_advertisers)
+│   ├── admin.advertiser.list.repository.js                    (DB: service_employee_advertisers)
+│   ├── admin.advertiser.offers.repository.js                  (DB: service_employee_advertisers)
+│   ├── admin.advertiser.offerRewards.repository.js            (DB: service_employee_advertisers)
+│   ├── admin.advertiser.offerApprovals.repository.js          (DB: service_employee_advertisers)
+│   ├── admin.advertiser.notificationApprovals.repository.js   (DB: service_employee_advertisers)
+│
+└── utils/
+    └── (reuse existing helpers as needed)
