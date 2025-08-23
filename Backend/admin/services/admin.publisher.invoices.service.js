@@ -1,6 +1,19 @@
-const repo = require("../repositories/admin.publisher.invoices.repository");
+// services/admin/publisher.invoices.service.js
+const repo = require("../../repositories/admin/publisher.invoices.repo");
 
-exports.list = async (filters) => {
-  const { rows, total, page, limit } = await repo.list(filters);
-  return { data: rows, total, page, limit };
+exports.list = (filters) => repo.list(filters);
+
+exports.create = async (payload) => {
+  return repo.create(payload);
 };
+
+exports.update = async (invoiceNumber, patch) => {
+  // Only allow status / notes / payout_amount updates from UI
+  const allowed = ["invoice_status", "notes", "payout_amount"];
+  const sanitized = Object.fromEntries(
+    Object.entries(patch).filter(([k]) => allowed.includes(k))
+  );
+  return repo.update(invoiceNumber, sanitized);
+};
+
+exports.get = (invoiceNumber) => repo.get(invoiceNumber);

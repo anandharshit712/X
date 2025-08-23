@@ -1,67 +1,87 @@
-const { createPool } = require("../config/database");
-const pool = createPool("service_employee_publisher");
+const pool = require("../../config/database");
 
-/**
- * Returns KPI cards for the Publisher dashboard.
- * All queries are read-only and scoped to the current month where applicable.
- */
-exports.getOverview = async () => {
-  // Using date_trunc for current-month windows
-  const sql = `
-    WITH
-    -- total publishers from lookup table if present; else distinct by activity
-    total_publishers AS (
-      SELECT COUNT(*)::int AS cnt
-      FROM public.publishers
-    ),
-    pending_approvals AS (
-      SELECT COUNT(*)::int AS cnt
-      FROM public.dashboard_pub_approval
-      WHERE LOWER(COALESCE(approval_status, 'pending')) = 'pending'
-    ),
-    invoices_this_month AS (
-      SELECT COUNT(*)::int AS cnt
-      FROM public.dashboard_invoices
-      WHERE created_at >= date_trunc('month', now())
-    ),
-    pending_invoices AS (
-      SELECT COUNT(*)::int AS cnt
-      FROM public.dashboard_invoices
-      WHERE LOWER(COALESCE(invoice_status, 'pending')) = 'pending'
-    ),
-    payouts_this_month AS (
-      SELECT COALESCE(SUM(amount), 0)::numeric(18,2) AS amt
-      FROM public.dashboard_payout_transactions
-      WHERE created_at >= date_trunc('month', now())
-    ),
-    validations_this_month AS (
-      SELECT COUNT(*)::int AS cnt
-      FROM public.dashboard_validation
-      WHERE COALESCE(created_at, now()) >= date_trunc('month', now())
-    )
-    SELECT
-      (SELECT cnt FROM total_publishers)              AS total_publishers,
-      (SELECT cnt FROM pending_approvals)            AS pending_approvals,
-      (SELECT cnt FROM invoices_this_month)          AS invoices_this_month,
-      (SELECT cnt FROM pending_invoices)             AS pending_invoices,
-      (SELECT amt FROM payouts_this_month)           AS payouts_this_month,
-      (SELECT cnt FROM validations_this_month)       AS validations_this_month
-  `;
-
+// Totals for cards on the page. We stick to admin DB objects from your SQL.
+exports.countTotals = async ({ start, end }) => {
   const client = await pool.connect();
   try {
-    const { rows } = await client.query(sql);
-    // rows[0] contains our KPI set
-    return (
-      rows[0] || {
-        total_publishers: 0,
-        pending_approvals: 0,
-        invoices_this_month: 0,
-        pending_invoices: 0,
-        payouts_this_month: 0,
-        validations_this_month: 0,
-      }
+    const [{ rows: pub }, { rows: adv }, { rows: off }] = await Promise.all([
+      client.query("SELECT COUNT(*)::int AS c FROM public.publishers"),
+      client.query("SELECT COUNT(*)::int AS c FROM public.advertisers"),
+      client.query(
+        "SELECT COUNT(*)::int AS c FROM public.dashboard_offers WHERE created_at BETWEEN $1 AND $2",
+        [start, end]
+      ),
+    ]);
+
+    return {
+      publishers: pub[0]?.c ?? 0,
+      offers: off[0]?.c ?? 0,
+      advertisers: adv[0]?.c ?? 0,
+      apps: 0, // not present in admin DB schema; leaving 0 to keep UI stable
+    };
+  } finally {
+    client.release();
+  }
+};
+
+// Pending counts for the “Pending Approvals” strip
+exports.countPending = async ({ start, end }) => {
+  const client = await pool.connect();
+  try {
+    const q = (table, col = "status") =>
+      client.query(
+        `SELECT COUNT(*)::int AS c FROM public.${table} WHERE (${col} = 'pending' OR ${col} IS NULL) AND (created_at BETWEEN $1 AND $2 OR created_at IS NULL)`,
+        [start, end]
+      );
+
+    const [invoices, publishers, offers, notifications] = await Promise.all([
+      q("dashboard_invoices"),
+      q("dashboard_pub_approval"),
+      q("dashboard_offer_approval"),
+      q("dashboard_notification_approval"),
+    ]);
+
+    return {
+      invoices: invoices.rows[0]?.c ?? 0,
+      publishers: publishers.rows[0]?.c ?? 0,
+      offers: offers.rows[0]?.c ?? 0,
+      notifications: notifications.rows[0]?.c ?? 0,
+    };
+  } finally {
+    client.release();
+  }
+};
+
+// “Top offers” table for margins or volume; this is illustrative until you wire real KPIs
+exports.selectTopOffers = async ({ metric, range: { start, end }, limit }) => {
+  const client = await pool.connect();
+  try {
+    // We don’t have actual margin/volume columns in admin DB; approximate from rewards + offers created window.
+    const { rows } = await client.query(
+      `
+      SELECT
+        o.offer_id::text AS id,
+        o.offer_name      AS name,
+        COALESCE(SUM(r.your_revenue)::numeric, 0)  AS approx_margin,
+        COALESCE(COUNT(r.reward_id), 0)            AS approx_volume
+      FROM public.dashboard_offers o
+      LEFT JOIN public.dashboard_offer_reward r
+        ON r.offer_id = o.offer_id
+      WHERE (o.created_at BETWEEN $1 AND $2)
+      GROUP BY o.offer_id, o.offer_name
+      ORDER BY ${metric === "volume" ? "approx_volume" : "approx_margin"} DESC
+      LIMIT $3
+      `,
+      [start, end, limit]
     );
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      [metric === "volume" ? "volume" : "margins"]: Number(
+        metric === "volume" ? r.approx_volume : r.approx_margin
+      ),
+    }));
   } finally {
     client.release();
   }

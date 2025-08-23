@@ -1,8 +1,18 @@
-const router = require("express").Router();
-const controller = require("../controllers/admin.publisher.invoices.controller");
-const { requireAuth, requireAdmin } = require("../middleware/adminAuthAdapter");
+// routes/admin/publisher.invoices.routes.js
+const express = require("express");
+const router = express.Router();
+const ctrl = require("../../controllers/admin/publisher.invoices.controller");
 
-// GET /api/admin/publisher/invoices?publisher_name=&month=&year=&invoice_status=&page=&limit=
-router.get("/", requireAuth, requireAdmin, controller.list);
+// GET /api/admin/publisher/invoices?status=&publisher=&month=&year=&search=
+router.get("/", ctrl.list);
+
+// POST /api/admin/publisher/invoices
+router.post("/", ctrl.create);
+
+// PATCH /api/admin/publisher/invoices/:invoiceNumber  (status / notes updates)
+router.patch("/:invoiceNumber", ctrl.update);
+
+// (Optional) GET one by invoice number
+router.get("/:invoiceNumber", ctrl.get);
 
 module.exports = router;

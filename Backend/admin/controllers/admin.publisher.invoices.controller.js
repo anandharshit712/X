@@ -1,27 +1,61 @@
-const service = require("../services/admin.publisher.invoices.service");
+// controllers/admin/publisher.invoices.controller.js
+const svc = require("../../services/admin/publisher.invoices.service");
 
 exports.list = async (req, res, next) => {
   try {
     const {
-      publisher_name,
+      status,
+      publisher,
       month,
       year,
-      invoice_status,
-      page = 1,
-      limit = 20,
+      search,
+      limit,
+      offset,
+      sort = "submitted_at",
+      order = "desc",
     } = req.query;
-
-    const result = await service.list({
-      publisher_name,
-      month,
-      year,
-      invoice_status,
-      page: Number(page),
-      limit: Number(limit),
+    const data = await svc.list({
+      status,
+      publisher,
+      month: month ? Number(month) : undefined,
+      year: year ? Number(year) : undefined,
+      search,
+      limit: limit ? Number(limit) : 100,
+      offset: offset ? Number(offset) : 0,
+      sort,
+      order: String(order).toLowerCase() === "asc" ? "asc" : "desc",
     });
+    res.json({ ok: true, data });
+  } catch (e) {
+    next(e);
+  }
+};
 
-    res.json({ success: true, ...result }); // matches user-side JSON style
-  } catch (err) {
-    next(err);
+exports.create = async (req, res, next) => {
+  try {
+    const created = await svc.create(req.body);
+    res.status(201).json({ ok: true, data: created });
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.update = async (req, res, next) => {
+  try {
+    const { invoiceNumber } = req.params;
+    const updated = await svc.update(invoiceNumber, req.body);
+    res.json({ ok: true, data: updated });
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.get = async (req, res, next) => {
+  try {
+    const { invoiceNumber } = req.params;
+    const data = await svc.get(invoiceNumber);
+    res.json({ ok: true, data });
+  } catch (e) {
+    next(e);
   }
 };

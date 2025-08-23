@@ -15,7 +15,7 @@ backend/
 │   ├── admin.publisher.detail.routes.js          (GET /api/admin/publisher/publisher/:email) ← detail roll-up
 │   │
 │   ├── admin.publisher.validation.routes.js      (GET /api/admin/publisher/validation?publisher_name=&month=&year=&status=)
-│   ├── admin.publisher.invoices.routes.js        (GET /api/admin/publisher/invoices?publisher_name=&month=&year=&invoice_status=)   ✅ done
+│   ├── admin.publisher.invoices.routes.js        (GET /api/admin/publisher/invoices?publisher_name=&month=&year=&invoice_status=)   
 │   ├── admin.publisher.transactions.routes.js    (GET /api/admin/publisher/transactions?publisher_name=&from=&to=&paid_in_full=)
 │   ├── admin.publisher.approvals.routes.js       (GET /api/admin/publisher/approvals?status=&publisher_name=)
 │   │
@@ -35,7 +35,7 @@ backend/
 │   ├── admin.publisher.detail.controller.js
 │   │
 │   ├── admin.publisher.validation.controller.js
-│   ├── admin.publisher.invoices.controller.js                                                                                         ✅ done
+│   ├── admin.publisher.invoices.controller.js                                                                                         
 │   ├── admin.publisher.transactions.controller.js
 │   ├── admin.publisher.approvals.controller.js
 │   │
@@ -54,7 +54,7 @@ backend/
 │   ├── admin.publisher.detail.service.js
 │   │
 │   ├── admin.publisher.validation.service.js
-│   ├── admin.publisher.invoices.service.js                                                                                           ✅ done
+│   ├── admin.publisher.invoices.service.js                                                                                           
 │   ├── admin.publisher.transactions.service.js
 │   ├── admin.publisher.approvals.service.js
 │   │
@@ -73,7 +73,7 @@ backend/
 │   ├── admin.publisher.detail.repository.js                   (DB: service_employee_publisher)
 │   │
 │   ├── admin.publisher.validation.repository.js               (DB: service_employee_publisher)
-│   ├── admin.publisher.invoices.repository.js                 (DB: service_employee_publisher)                                       ✅ done
+│   ├── admin.publisher.invoices.repository.js                 (DB: service_employee_publisher)                                       
 │   ├── admin.publisher.transactions.repository.js             (DB: service_employee_publisher)
 │   ├── admin.publisher.approvals.repository.js                (DB: service_employee_publisher)
 │   │

@@ -1,8 +1,12 @@
-const router = require("express").Router();
-const controller = require("../controllers/admin.publisher.overview.controller");
-const { requireAuth, requireAdmin } = require("../middleware/adminAuthAdapter");
+const express = require("express");
+const router = express.Router();
 
-// GET /api/admin/publisher/overview
-router.get("/", requireAuth, requireAdmin, controller.getOverview);
+const ctrl = require("../controllers/admin.publisher.overview.controller");
+
+// Summary cards + counts (supports date range)
+router.get("/summary", ctrl.getSummary);
+
+// “Top Offers” tables (margins/volume) with optional date range
+router.get("/top-offers", ctrl.getTopOffers);
 
 module.exports = router;
