@@ -1,7 +1,6 @@
 backend/
 │
 ├── server.js						done
-├── package.json
 ├── .env							done
 │
 ├── config/                        # Config files
