@@ -1,7 +1,7 @@
 // routes/admin/publisher.validation.routes.js
 const express = require("express");
 const router = express.Router();
-const ctrl = require("../../controllers/admin/publisher.validation.controller");
+const ctrl = require("../controllers/admin.publisher.validation.controller");
 
 // GET /api/admin/publisher/validations?publisher=&month=&year=
 router.get("/", ctrl.list);

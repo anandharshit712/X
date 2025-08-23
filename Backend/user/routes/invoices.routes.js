@@ -1,8 +1,8 @@
 // routes/invoices.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../middleware/auth");
-const { asyncHandler } = require("../middleware/asyncHandler");
-const uploadPdf = require("../middleware/uploadPdf");
+const { authenticateToken } = require("../../middleware/auth");
+const { asyncHandler } = require("../../middleware/asyncHandler");
+const uploadPdf = require("../../middleware/uploadPdf");
 
 const controller = require("../controllers/invoices.controller");
 const r = Router();

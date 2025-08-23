@@ -1,5 +1,5 @@
 // repositories/settings.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 const pool = pools.dashboard;
 
 async function getLogin({ advertiserId }) {

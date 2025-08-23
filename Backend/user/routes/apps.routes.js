@@ -1,11 +1,11 @@
 // routes/apps.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../middleware/auth"); // your JWT middleware
+const { authenticateToken } = require("../../middleware/auth"); // your JWT middleware
 const {
   validateQuery,
   validateParams,
-} = require("../middleware/validateRequest");
-const { asyncHandler } = require("../middleware/asyncHandler");
+} = require("../../middleware/validateRequest");
+const { asyncHandler } = require("../../middleware/asyncHandler");
 
 let AppsListQuerySchema, AppStatsQuerySchema, AppIdParamsSchema;
 try {

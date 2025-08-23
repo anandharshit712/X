@@ -1,5 +1,5 @@
 // repositories/admin/publisher.validation.repo.js
-const { pools } = require("../../../config/database");
+const { pools } = require("../../config/database");
 
 // Reuse the same pooling method as user-side.
 // This tries the obvious keys; adjust the key name in your config once and everything works.

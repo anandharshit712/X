@@ -1,6 +1,6 @@
 // services/payments.service.js
 const paymentsRepo = require("../repositories/payments.repo");
-const { computePayout } = require("../utils/comission");
+const { computePayout } = require("../../utils/comission");
 
 function resolveDateRange(from, to) {
   const end = to ? new Date(to) : new Date();

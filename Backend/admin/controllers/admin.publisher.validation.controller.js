@@ -1,5 +1,5 @@
 // controllers/admin/publisher.validation.controller.js
-const svc = require("../../services/admin/publisher.validation.service");
+const svc = require("../services/admin.publisher.validation.service");
 
 exports.list = async (req, res, next) => {
   try {

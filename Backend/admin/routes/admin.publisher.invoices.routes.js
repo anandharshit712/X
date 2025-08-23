@@ -1,7 +1,7 @@
 // routes/admin/publisher.invoices.routes.js
 const express = require("express");
 const router = express.Router();
-const ctrl = require("../../controllers/admin/publisher.invoices.controller");
+const ctrl = require("../controllers/admin.publisher.invoices.controller");
 
 // GET /api/admin/publisher/invoices?status=&publisher=&month=&year=&search=
 router.get("/", ctrl.list);

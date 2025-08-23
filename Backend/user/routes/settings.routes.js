@@ -1,7 +1,7 @@
 // routes/settings.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../middleware/auth");
-const { asyncHandler } = require("../middleware/asyncHandler");
+const { authenticateToken } = require("../../middleware/auth");
+const { asyncHandler } = require("../../middleware/asyncHandler");
 
 const controller = require("../controllers/settings.controller");
 const r = Router();

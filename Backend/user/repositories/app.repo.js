@@ -1,5 +1,5 @@
 // repositories/apps.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 
 /** List apps for an advertiser with optional search & pagination */
 async function fetchApps({ advertiserId, q, page = 1, size = 20 }) {
@@ -8,7 +8,9 @@ async function fetchApps({ advertiserId, q, page = 1, size = 20 }) {
   let where = `WHERE advertiser_id = $1`;
   if (q) {
     params.push(`%${q}%`, `%${q}%`);
-    where += ` AND (app_id ILIKE $${params.length - 1} OR app_package ILIKE $${params.length})`;
+    where += ` AND (app_id ILIKE $${params.length - 1} OR app_package ILIKE $${
+      params.length
+    })`;
   }
 
   const sqlItems = `

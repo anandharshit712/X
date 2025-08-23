@@ -1,5 +1,5 @@
 // repositories/dashboard.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 
 // Helper to build dynamic WHERE with params
 function buildRevenueWhere({ advertiserId, startISO, endISO, appId }) {
@@ -10,14 +10,19 @@ function buildRevenueWhere({ advertiserId, startISO, endISO, appId }) {
   clauses.push(`a.advertiser_id = $${params.push(advertiserId)}`);
 
   // date range on revenue.day
-  clauses.push(`r.day BETWEEN $${params.push(startISO)} AND $${params.push(endISO)}`);
+  clauses.push(
+    `r.day BETWEEN $${params.push(startISO)} AND $${params.push(endISO)}`
+  );
 
   // optional app_id
   if (appId) {
     clauses.push(`a.app_id = $${params.push(appId)}`);
   }
 
-  return { whereSql: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", params };
+  return {
+    whereSql: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "",
+    params,
+  };
 }
 
 /**
@@ -26,7 +31,12 @@ function buildRevenueWhere({ advertiserId, startISO, endISO, appId }) {
  * Columns used: r.revenue_in_dollars, r.clicks, r.conversions, r.day, a.app_id, a.app_package, a.advertiser_id
  */
 async function fetchToplineKPIs({ advertiserId, startISO, endISO, appId }) {
-  const { whereSql, params } = buildRevenueWhere({ advertiserId, startISO, endISO, appId });
+  const { whereSql, params } = buildRevenueWhere({
+    advertiserId,
+    startISO,
+    endISO,
+    appId,
+  });
 
   const sql = `
     SELECT
@@ -48,7 +58,12 @@ async function fetchToplineKPIs({ advertiserId, startISO, endISO, appId }) {
  * Daily trend aggregated by day within the window.
  */
 async function fetchDailyTrend({ advertiserId, startISO, endISO, appId }) {
-  const { whereSql, params } = buildRevenueWhere({ advertiserId, startISO, endISO, appId });
+  const { whereSql, params } = buildRevenueWhere({
+    advertiserId,
+    startISO,
+    endISO,
+    appId,
+  });
 
   const sql = `
     SELECT
@@ -73,8 +88,19 @@ async function fetchDailyTrend({ advertiserId, startISO, endISO, appId }) {
  * Top apps by revenue within the window (returns up to 5 by default).
  * Note: schema doesn't include app_name; we return app_id and totals.
  */
-async function fetchTopApps({ advertiserId, startISO, endISO, appId, limit = 5 }) {
-  const { whereSql, params } = buildRevenueWhere({ advertiserId, startISO, endISO, appId });
+async function fetchTopApps({
+  advertiserId,
+  startISO,
+  endISO,
+  appId,
+  limit = 5,
+}) {
+  const { whereSql, params } = buildRevenueWhere({
+    advertiserId,
+    startISO,
+    endISO,
+    appId,
+  });
   params.push(limit);
 
   const sql = `

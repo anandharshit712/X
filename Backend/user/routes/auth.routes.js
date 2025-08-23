@@ -1,12 +1,12 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 const pool = pools.dashboard; // Use the dashboard pool for auth operations
-const { generateToken } = require("../middleware/auth");
+const { generateToken } = require("../../middleware/auth");
 const {
   validateRegistration,
   validateLogin,
-} = require("../middleware/validation");
+} = require("../../middleware/validation");
 
 const router = express.Router();
 

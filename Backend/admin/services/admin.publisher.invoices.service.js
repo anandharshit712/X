@@ -1,5 +1,5 @@
 // services/admin/publisher.invoices.service.js
-const repo = require("../../repositories/admin/publisher.invoices.repo");
+const repo = require("../repositories/admin.publisher.invoices.repository");
 
 exports.list = (filters) => repo.list(filters);
 

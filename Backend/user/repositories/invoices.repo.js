@@ -1,5 +1,5 @@
 // repositories/invoices.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 
 /**
  * Monthly totals from offerwall_payments joined via offerwall_app for advertiser scope.

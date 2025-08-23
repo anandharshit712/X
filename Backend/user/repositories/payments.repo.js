@@ -1,5 +1,5 @@
 // repositories/payments.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 
 /**
  * Fetch payments-like rows from offerwall side.

@@ -1,5 +1,5 @@
 // controllers/admin/publisher.invoices.controller.js
-const svc = require("../../services/admin/publisher.invoices.service");
+const svc = require("../services/admin.publisher.invoices.service");
 
 exports.list = async (req, res, next) => {
   try {

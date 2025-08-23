@@ -1,5 +1,5 @@
 // services/admin/publisher.validation.service.js
-const repo = require("../../repositories/admin/publisher.validation.repo");
+const repo = require("../repositories/admin.publisher.validation.repository");
 
 exports.list = async (filters) => {
   return repo.list(filters);

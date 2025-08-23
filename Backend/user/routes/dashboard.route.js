@@ -1,8 +1,8 @@
 // routes/dashboard.routes.js
 const { Router } = require("express");
-const { authenticateToken } = require("../middleware/auth"); // your existing auth middleware
-const { validateQuery } = require("../middleware/validateRequest");
-const { asyncHandler } = require("../middleware/asyncHandler");
+const { authenticateToken } = require("../../middleware/auth"); // your existing auth middleware
+const { validateQuery } = require("../../middleware/validateRequest");
+const { asyncHandler } = require("../../middleware/asyncHandler");
 
 let DashboardQuerySchema;
 try {

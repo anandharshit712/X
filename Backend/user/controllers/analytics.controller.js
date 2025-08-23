@@ -21,12 +21,10 @@ const analyticsService = require("../services/analytics.service");
 async function getAnalytics(req, res) {
   const advertiserId = req.user?.advertiser_id;
   if (!advertiserId) {
-    return res
-      .status(401)
-      .json({
-        ok: false,
-        error: { code: "UNAUTHORIZED", message: "Missing advertiser context" },
-      });
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Missing advertiser context" },
+    });
   }
 
   const { from, to, app_id, country } = req.query;

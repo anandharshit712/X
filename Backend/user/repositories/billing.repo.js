@@ -1,4 +1,4 @@
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 const pool = pools.offerwall; // table lives in service_offerwall
 
 async function findByAdvertiserId({ advertiserId }) {

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const ctrl = require("../../controllers/admin.publisher.transactions.controller");
+const ctrl = require("../controllers/admin.publisher.transactions.controller");
 
 // LIST with filters + summary cards
 router.get(

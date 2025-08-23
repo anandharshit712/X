@@ -1,5 +1,5 @@
 // repositories/analytics.repo.js
-const { pools } = require("../config/database");
+const { pools } = require("../../config/database");
 
 /**
  * TIMESERIES (by day)
@@ -13,7 +13,13 @@ const { pools } = require("../config/database");
  * @param {string|null} args.appId
  * @param {string} args.metricCol  one of: revenue_in_dollars | clicks | conversions
  */
-async function fetchTimeseries({ advertiserId, startISO, endISO, appId, metricCol }) {
+async function fetchTimeseries({
+  advertiserId,
+  startISO,
+  endISO,
+  appId,
+  metricCol,
+}) {
   const params = [advertiserId, startISO, endISO];
   let appFilter = "";
   if (appId) {
@@ -87,7 +93,13 @@ async function fetchByCountry({ advertiserId, startISO, endISO, appId }) {
  * Source: offerwall_revenue (aggregated per app via app_package)
  * Join: offerwall_app to map -> app_id and enforce advertiser_id
  */
-async function fetchByApp({ advertiserId, startISO, endISO, appId, metricCol }) {
+async function fetchByApp({
+  advertiserId,
+  startISO,
+  endISO,
+  appId,
+  metricCol,
+}) {
   const params = [advertiserId, startISO, endISO];
   let appFilter = "";
   if (appId) {

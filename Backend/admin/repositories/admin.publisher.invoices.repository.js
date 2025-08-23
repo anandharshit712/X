@@ -1,5 +1,5 @@
 // repositories/admin/publisher.invoices.repo.js
-const { pools } = require("../../../config/database");
+const { pools } = require("../../config/database");
 
 const pool =
   (pools &&
