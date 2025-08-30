@@ -28,3 +28,5 @@ exports.setStatus = (offerId, status) => {
   }
   return repo.setStatus(offerId, S);
 };
+
+exports.listOfferwallApps = () => repo.listOfferwallApps();

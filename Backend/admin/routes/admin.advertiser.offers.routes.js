@@ -8,10 +8,14 @@ router.get("/", ctrl.list);
 // CREATE
 router.post("/", ctrl.create);
 
+// LOOKUPS (dynamic dropdowns)
+router.get("/lookups/offerwall-apps", ctrl.listOfferwallApps);
+
+// UPDATE
+
 // READ one
 router.get("/:offerId", ctrl.get);
 
-// UPDATE
 router.put("/:offerId", ctrl.update);
 
 // STATUS toggle (ACTIVE/PAUSED)

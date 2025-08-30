@@ -8,7 +8,7 @@ const createPool = (database) => {
   const config = {
     host: process.env.DB_HOST || "localhost",
     user: process.env.DB_USER || "postgres",
-    password: String(dbPassword || "" ),
+    password: String(dbPassword || ""),
     database: database,
     port: parseInt(process.env.DB_PORT) || 5432,
     max: 20,
@@ -31,6 +31,11 @@ const databases = {
   offerwall: "service_offerwall",
   emailing: "service_emailing",
   engagex: "engagex",
+  employee: "service_employee", // employees/auth
+  employeePublisher: "service_employee_publisher", // publisher-side admin DB
+  publisher: "service_employee_publisher", // alias used by some repos
+  employeeAdvertisers: "service_employee_advertisers", // advertiser-side admin DB
+  advertisers: "service_employee_advertisers", // alias used by some repos
 };
 
 // Initialize all pools

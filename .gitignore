@@ -3,3 +3,6 @@ X.zip
 start-dev.bat
 Backend/backend.zip
 Frontend/frontend.zip
+Backend/user+admin_backend.zip
+DatabaseSchema/DB_scripts_and_schema.zip
+Frontend/user_frontend.zip

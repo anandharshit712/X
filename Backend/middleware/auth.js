@@ -17,7 +17,7 @@ const authenticateToken = async (req, res, next) => {
 
     // Verify user still exists in database
     const users = await pool.query(
-      "SELECT advertiser_id, name, email, account_type FROM dashboard_login WHERE advertiser_id = $1",
+      "SELECT advertiser_id, name, email, account_type, role FROM dashboard_login WHERE advertiser_id = $1",
       [decoded.advertiser_id]
     );
 

@@ -133,6 +133,22 @@ const validateProfileUpdate = [
   handleValidationErrors,
 ];
 
+const validateChangePassword = [
+  body("old_password")
+    .isString()
+    .notEmpty()
+    .withMessage("Old password is required"),
+  body("new_password")
+    .isString()
+    .isLength({ min: 8 })
+    .withMessage("New password must be at least 8 characters")
+    .matches(/[A-Za-z]/)
+    .withMessage("New password must include a letter")
+    .matches(/[0-9]/)
+    .withMessage("New password must include a number"),
+  handleValidationErrors,
+];
+
 module.exports = {
   validateRegistration,
   validateLogin,
@@ -142,4 +158,5 @@ module.exports = {
   validateApp,
   validateProfileUpdate,
   handleValidationErrors,
+  validateChangePassword,
 };

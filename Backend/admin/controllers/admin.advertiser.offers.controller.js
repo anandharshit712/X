@@ -61,3 +61,13 @@ exports.setStatus = async (req, res, next) => {
     next(e);
   }
 };
+
+// GET /api/admin/advertiser/offers/lookups/offerwall-apps
+exports.listOfferwallApps = async (_req, res, next) => {
+  try {
+    const apps = await svc.listOfferwallApps();
+    res.json({ ok: true, apps });
+  } catch (e) {
+    next(e);
+  }
+};

@@ -146,3 +146,20 @@ exports.setStatus = async (offerId, status) => {
   );
   return rows[0] || null;
 };
+
+// Apps from Offerwall that actually have offers (dynamic Step-4 dropdown)
+exports.listOfferwallApps = async () => {
+  const client = await pools.offerwall.connect();
+  try {
+    const q = `
+      SELECT DISTINCT a.app_id, a.app_package AS label
+      FROM public.offerwall_app a
+      JOIN public.offerwall_offers o ON o.app_id = a.app_id
+      ORDER BY label
+    `;
+    const { rows } = await client.query(q);
+    return rows;
+  } finally {
+    client.release();
+  }
+};
