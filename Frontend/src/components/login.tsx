@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import api from "../lib/api";
+import { login } from "../services/auth";
 
 const Login = () => {
   // User credentials

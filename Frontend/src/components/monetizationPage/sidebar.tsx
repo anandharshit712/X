@@ -469,7 +469,7 @@ const AnalyticsPage = () => {
 };
 
 // --- LOGO CONSTANTS ---
-const LogoFull = "../public/logo.png"; // Full logo path
+const LogoFull = "../logo.png"; // Full logo path
 const LogoCollapsed = "../public/collapsed.png"; // Collapsed logo path
 
 // --- NAVITEM (REUSABLE COMPONENT) ---
